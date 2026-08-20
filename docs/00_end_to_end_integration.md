@@ -196,7 +196,7 @@ Each merge to `main` requires 1 peer review. Recommended reviewer pairing: Data 
 Use this version (instead of a single role's block) when you need an AI assistant to reason about integration issues that span roles — e.g. debugging why the dashboard isn't updating, or checking a schema change's downstream impact.
 
 ```
-I'm working on "Inuka Sentinel," a 72-hour hackathon project: a predictive
+I'm working on "Inuka Risk Radar" a 72-hour hackathon project: a predictive
 intelligence + automation platform that identifies at-risk program beneficiaries
 (education dropout risk) in Kenya and triggers automated SMS outreach to field
 workers when risk is high.
