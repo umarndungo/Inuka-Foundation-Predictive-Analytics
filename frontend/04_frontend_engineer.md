@@ -90,7 +90,7 @@ frontend/src/
 ## 5. AI Context Block
 
 ```
-I'm the Frontend Engineer on a 72-hour hackathon project called "Inuka Sentinel" —
+I'm the Frontend Engineer on a 72-hour hackathon project called "Inuka Risk Radar" —
 a predictive intelligence dashboard for at-risk program beneficiaries in Kenya,
 with real-time telemetry, a demand-forecast map, and offline-first field data entry.
 

@@ -92,7 +92,7 @@ if not beneficiary_id:
 ## 5. AI Context Block
 
 ```
-I'm the Backend Engineer on a 72-hour hackathon project called "Inuka Sentinel" —
+I'm the Backend Engineer on a 72-hour hackathon project called "Inuka Risk Radar" —
 a predictive intelligence + automation platform for at-risk program beneficiaries
 in Kenya. FastAPI is the integration hub between Kafka/Postgres, an XGBoost model,
 and an n8n/Twilio automation layer.

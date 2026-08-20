@@ -86,7 +86,7 @@ Key contract you must satisfy — the `/api/v1/evaluate` response shape:
 ## 5. AI Context Block
 
 ```
-I'm the Data Scientist on a 72-hour hackathon project called "Inuka Sentinel" —
+I'm the Data Scientist on a 72-hour hackathon project called "Inuka Risk Radar" —
 a predictive intelligence platform for identifying at-risk program beneficiaries
 (education dropout risk) in Kenya, plus regional demand forecasting.
 

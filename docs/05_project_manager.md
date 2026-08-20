@@ -67,7 +67,7 @@ You depend on artifacts from all four other roles by Day 3:
 ## 5. AI Context Block
 
 ```
-I'm the Project Manager on a 72-hour hackathon project called "Inuka Sentinel" —
+I'm the Project Manager on a 72-hour hackathon project called "Inuka Risk Radar" —
 a predictive intelligence + automation platform that identifies at-risk program
 beneficiaries (education dropout risk) in Kenya and triggers automated field-worker
 outreach via SMS. I need help with the Quantified Impact Memo, UAT scripts, and the

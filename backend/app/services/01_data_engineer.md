@@ -85,7 +85,7 @@ Kafka topics you standardize on:
 Paste this into your AI coding assistant (Claude Code, Cursor, etc.) at the start of a session to give it working context:
 
 ```
-I'm the Data Engineer on a 72-hour hackathon project called "Inuka Sentinel" —
+I'm the Data Engineer on a 72-hour hackathon project called "Inuka Risk Radar" —
 a predictive intelligence platform for tracking at-risk program beneficiaries
 (education dropout risk prediction) in Kenya.
 
