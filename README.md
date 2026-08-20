@@ -94,7 +94,7 @@ Five layers, open-source end to end (no paid SaaS dependencies):
 ## Repository Structure
 
 ```
-inuka-sentinel/
+Inuka-Risk-Radar/
 ├── docker-compose.yml
 ├── backend/
 │   ├── main.py
