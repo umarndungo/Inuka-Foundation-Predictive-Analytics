@@ -32,8 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_bronze_telemetry_payload_gin
 
 -- Idempotent unique key for Kafka offsets (avoids duplicate landings on restart).
 CREATE UNIQUE INDEX IF NOT EXISTS uq_bronze_telemetry_kafka_offset
-    ON bronze.telemetry_events (topic, partition_id, kafka_offset)
-    WHERE partition_id IS NOT NULL AND kafka_offset IS NOT NULL;
+    ON bronze.telemetry_events (topic, partition_id, kafka_offset);
 
 COMMENT ON TABLE bronze.telemetry_events IS
     'Bronze: raw Kafka payloads (beneficiary.telemetry / system.alerts). Synthetic data only.';
