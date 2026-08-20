@@ -1,5 +1,6 @@
 # Inuka-Foundation-Predictive-Analytics
 
+
 **Predictive Intelligence & Program Automation** — built for the Inuka Foundation Hackathon (Stage 2)
 
 Inuka Sentinel identifies at-risk program beneficiaries (education dropout risk) from field telemetry, scores them with a trained ML model, and automatically triggers SMS outreach to field workers when risk crosses a threshold — all visualized on a real-time, offline-capable dashboard.
@@ -93,7 +94,7 @@ Five layers, open-source end to end (no paid SaaS dependencies):
 ## Repository Structure
 
 ```
-inuka-sentinel/
+Inuka-Risk-Radar/
 ├── docker-compose.yml
 ├── backend/
 │   ├── main.py
