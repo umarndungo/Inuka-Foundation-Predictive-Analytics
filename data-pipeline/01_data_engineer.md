@@ -30,7 +30,7 @@ Kafka topics you standardize on:
 - [ ] Create Kafka topics `beneficiary.telemetry` and `system.alerts` (via init script or Redpanda console).
 - [ ] Write and run `01_bronze_schema.sql` — raw JSON log table, indexed by ingestion timestamp.
 - [ ] Build `data-pipeline/scripts/kafka_producer_sim.py` to feed synthetic events into `beneficiary.telemetry` at a configurable rate.
-- [ ] Run `data-pipeline/scripts/seed_generator.py` to produce `synthetic_beneficiaries.json`, validate output shape matches the schema Backend/Data Science expect (`beneficiary_id`, `attendance_rate`, `region`, etc.).
+- [ ] Run `data-pipeline/scripts/seed_generator.py` to produce `synthetic_beneficiaries.json`, validate output shape matches the schema Backend/Data Science expect (`beneficiary_id`, `pillar`, `dropped_out`, `attendance_rate`, `region`, etc.).
 - [ ] Confirm producer → topic → consumer round-trip works locally (simple print consumer is fine for Day 1).
 - [ ] Push to `feature/data-fabric`, open draft PR early so Backend Engineer can see topic names/shapes.
 
@@ -104,9 +104,15 @@ MY SCOPE:
 KAFKA TOPICS: `beneficiary.telemetry` (field data events), `system.alerts` (risk
 escalation events triggered by the backend).
 
-KEY FIELDS in synthetic data: beneficiary_id, region (Nairobi/Kisumu/Nakuru/
-Mombasa/Eldoret), attendance_rate, grade_average, socioeconomic_index,
-historical_dropouts_in_family, timestamp.
+KEY FIELDS in synthetic data: beneficiary_id, timestamp, region
+(Nairobi/Kisumu/Nakuru/Mombasa/Eldoret), pillar (Scholarship|Plus|Vocational|Tech),
+attendance_rate, grade_average, socioeconomic_index, historical_dropouts_in_family,
+assignment_completion, travel_distance_km, dropped_out (0/1 historical synthetic
+outcome for ML training).
+
+NOTE: dropped_out is the supervised target — do not derive training labels only
+from the same predictors. pillar must flow seed → Kafka → Silver → Gold.
+Gold exposes gold.pillar_regional_stats (region × pillar) and dropout_rate.
 
 CONSTRAINTS:
 - Target end-to-end latency (Kafka → dashboard) under 500ms.

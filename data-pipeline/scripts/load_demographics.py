@@ -31,13 +31,17 @@ UPSERT_SQL = """
 INSERT INTO silver.beneficiary_demographics (
     beneficiary_id,
     region,
+    pillar,
     socioeconomic_index,
-    historical_dropouts_in_family
-) VALUES (%s, %s, %s, %s)
+    historical_dropouts_in_family,
+    dropped_out
+) VALUES (%s, %s, %s, %s, %s, %s)
 ON CONFLICT (beneficiary_id) DO UPDATE SET
     region = EXCLUDED.region,
+    pillar = EXCLUDED.pillar,
     socioeconomic_index = EXCLUDED.socioeconomic_index,
-    historical_dropouts_in_family = EXCLUDED.historical_dropouts_in_family
+    historical_dropouts_in_family = EXCLUDED.historical_dropouts_in_family,
+    dropped_out = EXCLUDED.dropped_out
 """
 
 
@@ -62,8 +66,10 @@ def main() -> None:
                     (
                         row["beneficiary_id"],
                         row["region"],
+                        row.get("pillar", "Scholarship"),
                         row["socioeconomic_index"],
                         row["historical_dropouts_in_family"],
+                        int(row.get("dropped_out", 0)),
                     ),
                 )
         conn.commit()

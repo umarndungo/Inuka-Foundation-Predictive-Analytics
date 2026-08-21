@@ -104,9 +104,13 @@ travel_distance_km, region }
 Response: { beneficiary_id, risk_score, risk_tier (LOW/MEDIUM/HIGH), drivers
 (list of human-readable strings), recommended_action, automation_triggered (bool) }
 
-TRAINING DATA fields (synthetic): beneficiary_id, region (Nairobi/Kisumu/Nakuru/
-Mombasa/Eldoret), attendance_rate, grade_average, socioeconomic_index,
-historical_dropouts_in_family, timestamp.
+TRAINING DATA fields (synthetic): beneficiary_id, timestamp, region
+(Nairobi/Kisumu/Nakuru/Mombasa/Eldoret), pillar (Scholarship|Plus|Vocational|Tech),
+attendance_rate, grade_average, socioeconomic_index, historical_dropouts_in_family,
+assignment_completion, travel_distance_km, dropped_out (supervised target).
+
+TARGET: train on dropped_out only — do not engineer labels from predictor thresholds.
+pillar is an optional categorical feature (one-hot).
 
 CONSTRAINTS:
 - random_state=42 everywhere for reproducibility.
