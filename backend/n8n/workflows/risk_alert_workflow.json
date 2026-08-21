@@ -1,0 +1,106 @@
+{
+  "name": "Inuka Risk Radar - Field Worker SMS Escalation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inuka-risk-alert",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0001-4a11-8000-000000000001",
+      "name": "Webhook - risk alert",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "inuka-risk-alert"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sms-body",
+              "name": "sms_body",
+              "type": "string",
+              "value": "=INUKA ALERT: Beneficiary {{$json.body.beneficiary_id}} is {{$json.body.risk_tier}} risk (score {{$json.body.risk_score}}) in {{$json.body.region}}. Please schedule a field visit. Alert: {{$json.body.alert_id}}"
+            },
+            {
+              "id": "field-worker-number",
+              "name": "field_worker_number",
+              "type": "string",
+              "value": "={{$env.FIELD_WORKER_PHONE_NUMBER}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1a2b3c4d-0002-4a11-8000-000000000002",
+      "name": "Format SMS",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.twilio.com/2010-04-01/Accounts/{{$env.TWILIO_ACCOUNT_SID}}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "To", "value": "={{$json.field_worker_number}}" },
+            { "name": "From", "value": "={{$env.TWILIO_FROM_NUMBER}}" },
+            { "name": "Body", "value": "={{$json.sms_body}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1a2b3c4d-0003-4a11-8000-000000000003",
+      "name": "Twilio - send SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 220],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "twilio-basic-auth",
+          "name": "Twilio Basic Auth (Account SID / Auth Token)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ok\", \"alert_id\": $('Webhook - risk alert').item.json.body.alert_id } }}"
+      },
+      "id": "1a2b3c4d-0004-4a11-8000-000000000004",
+      "name": "Respond to webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [700, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - risk alert": {
+      "main": [
+        [
+          { "node": "Format SMS", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Format SMS": {
+      "main": [
+        [
+          { "node": "Twilio - send SMS", "type": "main", "index": 0 },
+          { "node": "Respond to webhook", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
