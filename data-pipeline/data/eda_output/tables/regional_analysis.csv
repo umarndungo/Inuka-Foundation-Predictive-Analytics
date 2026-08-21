@@ -1,0 +1,6 @@
+region,beneficiaries,dropout_count,dropout_rate,avg_attendance,avg_grade,avg_socioeconomic_index,avg_assignment_completion,avg_travel_distance
+Eldoret,105,20,19.05,0.712,69.767,2.796,0.691,13.794
+Kisumu,92,42,45.65,0.583,63.399,2.294,0.558,18.365
+Mombasa,114,22,19.3,0.681,70.906,2.764,0.692,12.329
+Nairobi,97,15,15.46,0.726,69.616,3.057,0.693,13.513
+Nakuru,92,16,17.39,0.738,71.264,2.752,0.669,13.804

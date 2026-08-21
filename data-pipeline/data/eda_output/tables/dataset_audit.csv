@@ -1,0 +1,12 @@
+column,dtype,records,missing,missing_pct,unique_values
+beneficiary_id,str,500,0,0.0,500
+timestamp,str,500,0,0.0,494
+region,str,500,0,0.0,5
+pillar,str,500,0,0.0,4
+attendance_rate,float64,500,0,0.0,478
+grade_average,float64,500,0,0.0,472
+socioeconomic_index,float64,500,0,0.0,276
+historical_dropouts_in_family,int64,500,0,0.0,4
+assignment_completion,float64,500,0,0.0,485
+travel_distance_km,float64,500,0,0.0,456
+dropped_out,int64,500,0,0.0,2

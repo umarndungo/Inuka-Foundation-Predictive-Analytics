@@ -1,0 +1,5 @@
+pillar,beneficiaries,dropout_count,dropout_rate,avg_attendance,avg_grade,avg_assignment_completion,avg_travel_distance
+Plus,117,25,21.37,0.692,69.485,0.664,14.55
+Scholarship,120,22,18.33,0.697,67.302,0.665,14.215
+Tech,134,29,21.64,0.701,69.826,0.665,13.818
+Vocational,129,39,30.23,0.666,69.674,0.658,14.454
