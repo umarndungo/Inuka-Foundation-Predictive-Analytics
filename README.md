@@ -3,7 +3,7 @@
 
 **Predictive Intelligence & Program Automation** — built for the Inuka Foundation Hackathon (Stage 2)
 
-Inuka Sentinel identifies at-risk program beneficiaries (education dropout risk) from field telemetry, scores them with a trained ML model, and automatically triggers SMS outreach to field workers when risk crosses a threshold — all visualized on a real-time, offline-capable dashboard.
+Inuka Risk Radar identifies at-risk program beneficiaries (education dropout risk) from field telemetry, scores them with a trained ML model, and automatically triggers SMS outreach to field workers when risk crosses a threshold — all visualized on a real-time, offline-capable dashboard.
 
 **Sprint duration:** 72 hours · **Team:** 5 roles (Data Engineer, Data Scientist, Backend Engineer, Frontend Engineer, Project Manager)
 
