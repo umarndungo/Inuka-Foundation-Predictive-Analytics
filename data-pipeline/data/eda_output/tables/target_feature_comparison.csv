@@ -1,0 +1,13 @@
+feature,dropped_out,mean,median,std
+attendance_rate,0,0.7105,0.726,0.1583
+attendance_rate,1,0.6156,0.5973,0.1628
+grade_average,0,69.9526,71.32,14.5571
+grade_average,1,66.251,66.85,14.5056
+socioeconomic_index,0,2.8295,2.8,1.17
+socioeconomic_index,1,2.4357,2.24,1.0723
+historical_dropouts_in_family,0,0.7922,0.0,0.9401
+historical_dropouts_in_family,1,1.2696,1.0,1.1797
+assignment_completion,0,0.6822,0.7067,0.1868
+assignment_completion,1,0.5994,0.6138,0.1887
+travel_distance_km,0,13.458,14.31,7.3548
+travel_distance_km,1,16.8959,17.32,7.1459
