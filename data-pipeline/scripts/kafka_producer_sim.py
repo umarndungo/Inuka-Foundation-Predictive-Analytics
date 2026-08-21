@@ -73,7 +73,10 @@ def publish_loop(
         sent += 1
         i += 1
         if sent % 25 == 0 or sent == 1:
-            print(f"[{sent}] → {TELEMETRY_TOPIC}  {key}  region={event.get('region')}")
+            print(
+                f"[{sent}] → {TELEMETRY_TOPIC}  {key}  "
+                f"region={event.get('region')}  pillar={event.get('pillar')}"
+            )
         if interval:
             time.sleep(interval)
 
