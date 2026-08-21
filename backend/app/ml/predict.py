@@ -79,6 +79,7 @@ def _drivers(payload: dict[str, Any], importances: dict[str, float], limit: int 
             "socioeconomic_index",
             "historical_dropouts_in_family",
             "region",
+            "pillar",
         ):
             if feat in name:
                 raw_importance[feat] = max(raw_importance.get(feat, 0.0), float(val))
@@ -97,14 +98,19 @@ def _drivers(payload: dict[str, Any], importances: dict[str, float], limit: int 
 
 def _row_from_payload(payload: dict[str, Any], artifact: dict[str, Any]) -> pd.DataFrame:
     defaults = artifact.get("default_numeric", {})
+    cat_defaults = artifact.get("default_categorical", {})
     row: dict[str, Any] = {}
     for col in artifact["numeric_features"]:
         if payload.get(col) is None:
             row[col] = defaults.get(col, 0.0)
         else:
             row[col] = float(payload[col])
-    region = payload.get("region") or "Nairobi"
-    row["region"] = region
+    for col in artifact.get("categorical_features", ["region"]):
+        if payload.get(col) is None:
+            fallback = {"region": "Nairobi", "pillar": "Scholarship"}
+            row[col] = cat_defaults.get(col, fallback.get(col, "UNKNOWN"))
+        else:
+            row[col] = payload[col]
     return pd.DataFrame([row], columns=artifact["feature_columns"])
 
 

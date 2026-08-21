@@ -110,13 +110,16 @@ def forecast_regional_demand(
         else:
             trend = "flat"
 
-        high_share = float(
-            (
-                (sub["attendance_rate"] < 0.55)
-                | (sub["travel_distance_km"] > 18)
-                | (sub["historical_dropouts_in_family"] >= 2)
-            ).mean()
-        )
+        if "dropped_out" in sub.columns:
+            high_share = float(sub["dropped_out"].astype(float).mean())
+        else:
+            high_share = float(
+                (
+                    (sub["attendance_rate"] < 0.55)
+                    | (sub["travel_distance_km"] > 18)
+                    | (sub["historical_dropouts_in_family"] >= 2)
+                ).mean()
+            )
 
         results.append(
             {

@@ -3,7 +3,8 @@ Train dropout-risk XGBoost pipeline for Inuka Risk Radar.
 
 - random_state=42 everywhere
 - Scalers/encoders fit on train split only (no leakage)
-- risk_score at inference = P(at_risk); automation fires when > 0.75
+- risk_score at inference = P(dropped_out); automation fires when > 0.75
+- Target = historical synthetic dropped_out from seed (not feature thresholds)
 - Synthetic data only — no real PII
 
 Usage:
@@ -18,7 +19,6 @@ import sys
 from pathlib import Path
 
 import joblib
-import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import (
@@ -42,10 +42,12 @@ NUMERIC_FEATURES = [
     "socioeconomic_index",
     "historical_dropouts_in_family",
 ]
-CATEGORICAL_FEATURES = ["region"]
+CATEGORICAL_FEATURES = ["region", "pillar"]
 FEATURE_COLUMNS = NUMERIC_FEATURES + CATEGORICAL_FEATURES
+TARGET_COLUMN = "dropped_out"
 
 REGIONS = ("Nairobi", "Kisumu", "Nakuru", "Mombasa", "Eldoret")
+PILLARS = ("Scholarship", "Plus", "Vocational", "Tech")
 
 ML_DIR = Path(__file__).resolve().parent
 # <repo>/backend/app/ml → parents[3] = repo root
@@ -58,31 +60,25 @@ DEFAULT_METRICS = ML_DIR / "metrics.json"
 def load_synthetic(path: Path) -> pd.DataFrame:
     records = json.loads(path.read_text(encoding="utf-8"))
     df = pd.DataFrame(records)
-    missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
+    required = FEATURE_COLUMNS + [TARGET_COLUMN]
+    missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(
             f"Training data missing columns {missing}. "
-            "Confirm Data Engineer seed includes travel_distance_km / assignment_completion."
+            "Confirm Data Engineer seed includes travel_distance_km, assignment_completion, "
+            "pillar, and dropped_out (historical synthetic outcome)."
         )
     return df
 
 
-def engineer_at_risk_label(df: pd.DataFrame) -> pd.Series:
+def load_target(df: pd.DataFrame) -> pd.Series:
     """
-    Supervised label: at_risk=1 when synthetic dropout-risk indicators are elevated.
+    Supervised label = historical synthetic dropped_out from the seed generator.
 
-    Thresholds chosen so ~25–35% positives, leaving headroom for the model to
-    calibrate probabilities around the 0.75 automation cutoff.
+    Defensible outcome column — not a deterministic cut of the same predictors.
+    risk_score at inference = P(dropped_out).
     """
-    high = (
-        (df["attendance_rate"] < 0.55)
-        | (df["travel_distance_km"] > 18.0)
-        | (df["assignment_completion"] < 0.45)
-        | (df["historical_dropouts_in_family"] >= 2)
-        | ((df["socioeconomic_index"] < 2.0) & (df["attendance_rate"] < 0.65))
-        | (df["grade_average"] < 50.0)
-    )
-    return high.astype(int)
+    return df[TARGET_COLUMN].astype(int)
 
 
 def risk_tier_from_score(score: float) -> str:
@@ -140,16 +136,26 @@ def transformed_feature_names(pipeline: Pipeline) -> list[str]:
 
 def run_eda(df: pd.DataFrame, label: pd.Series) -> dict:
     """Lightweight EDA summary for PM Impact Memo / model card."""
+    tagged = df.assign(dropped_out=label)
     by_region = (
-        df.assign(at_risk=label)
-        .groupby("region", sort=True)
+        tagged.groupby("region", sort=True)
         .agg(
             n=("beneficiary_id", "count"),
             avg_attendance=("attendance_rate", "mean"),
             avg_grade=("grade_average", "mean"),
             avg_socioeconomic=("socioeconomic_index", "mean"),
             avg_family_dropouts=("historical_dropouts_in_family", "mean"),
-            at_risk_rate=("at_risk", "mean"),
+            dropout_rate=("dropped_out", "mean"),
+        )
+        .round(4)
+        .to_dict(orient="index")
+    )
+    by_pillar = (
+        tagged.groupby("pillar", sort=True)
+        .agg(
+            n=("beneficiary_id", "count"),
+            avg_attendance=("attendance_rate", "mean"),
+            dropout_rate=("dropped_out", "mean"),
         )
         .round(4)
         .to_dict(orient="index")
@@ -157,12 +163,14 @@ def run_eda(df: pd.DataFrame, label: pd.Series) -> dict:
     corr = float(df["attendance_rate"].corr(label.astype(float)))
     return {
         "n_records": int(len(df)),
-        "at_risk_rate": float(label.mean()),
-        "attendance_vs_at_risk_corr": corr,
+        "dropout_rate": float(label.mean()),
+        "at_risk_rate": float(label.mean()),  # alias for older Impact Memo consumers
+        "attendance_vs_dropout_corr": corr,
         "by_region": by_region,
+        "by_pillar": by_pillar,
         "headline": (
-            f"Attendance vs at-risk label correlation = {corr:.3f} "
-            "(lower attendance ↔ higher dropout risk on synthetic data)."
+            f"Attendance vs dropped_out correlation = {corr:.3f} "
+            "(lower attendance ↔ higher historical dropout on synthetic data)."
         ),
     }
 
@@ -173,7 +181,7 @@ def train(
     metrics_path: Path = DEFAULT_METRICS,
 ) -> dict:
     df = load_synthetic(data_path)
-    y = engineer_at_risk_label(df)
+    y = load_target(df)
     X = df[FEATURE_COLUMNS].copy()
 
     eda = run_eda(df, y)
@@ -209,16 +217,21 @@ def train(
         "categorical_features": CATEGORICAL_FEATURES,
         "automation_threshold": AUTOMATION_THRESHOLD,
         "random_state": RANDOM_STATE,
+        "label_column": TARGET_COLUMN,
         "label_rule": (
-            "at_risk if attendance<0.55 OR travel>18 OR assignment<0.45 "
-            "OR family_dropouts>=2 OR (socioeconomic<2 & attendance<0.65) "
-            "OR grade<50"
+            "dropped_out from seed_generator latent logistic process "
+            "(noisy synthetic historical outcome; not deterministic feature thresholds)"
         ),
         "default_numeric": {
             col: float(X_train[col].median()) for col in NUMERIC_FEATURES
         },
+        "default_categorical": {
+            "region": X_train["region"].mode().iloc[0],
+            "pillar": X_train["pillar"].mode().iloc[0],
+        },
         "feature_importances": importances,
         "regions": list(REGIONS),
+        "pillars": list(PILLARS),
     }
     model_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(artifact, model_path)
@@ -242,8 +255,10 @@ def train(
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
 
     print(eda["headline"])
-    print(f"at_risk_rate={eda['at_risk_rate']:.3f}  test ROC-AUC={auc:.3f}  "
-          f"P/R/F1@0.75={precision:.3f}/{recall:.3f}/{f1:.3f}")
+    print(
+        f"dropout_rate={eda['dropout_rate']:.3f}  test ROC-AUC={auc:.3f}  "
+        f"P/R/F1@0.75={precision:.3f}/{recall:.3f}/{f1:.3f}"
+    )
     print("Top importances:")
     for name, val in list(importances.items())[:8]:
         print(f"  {name}: {val:.4f}")

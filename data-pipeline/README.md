@@ -18,14 +18,14 @@ runs as idempotent Postgres views that refresh as soon as Bronze is written.
 seed JSON → Kafka (beneficiary.telemetry / system.alerts)
          → Bronze (raw JSON events)
          → Silver (identity graph, one row per beneficiary)
-         → Gold (regional_risk_stats, hourly volumes, alert stats)
+         → Gold (regional_risk_stats, pillar_regional_stats, hourly volumes, alert stats)
 ```
 
 | Layer | Objects | Purpose |
 |---|---|---|
 | **Bronze** | `bronze.telemetry_events` | Untouched Kafka payloads (telemetry + alerts) |
 | **Silver** | `silver.beneficiary_demographics`, `silver.latest_telemetry`, `silver.beneficiary_identity_graph` | Deduped canonical beneficiary records for ML / `/evaluate` |
-| **Gold** | `gold.regional_risk_stats`, `gold.regional_telemetry_hourly`, `gold.regional_alert_stats` | Pre-aggregates for dashboard + demand forecasting |
+| **Gold** | `gold.regional_risk_stats`, `gold.pillar_regional_stats`, `gold.regional_telemetry_hourly`, `gold.regional_alert_stats` | Pre-aggregates for dashboard + demand forecasting (region and region × pillar) |
 
 There is no separate ETL scheduler. Views are always consistent under Postgres
 MVCC reads, which keeps Kafka → dashboard latency on the near-real-time path
@@ -90,7 +90,9 @@ Check layers:
 docker exec -it inuka-postgres psql -U inuka -d inuka_risk_radar -c \
   "SELECT count(*) FROM bronze.telemetry_events;"
 docker exec -it inuka-postgres psql -U inuka -d inuka_risk_radar -c \
-  "SELECT region, beneficiary_count, high_risk_count FROM gold.regional_risk_stats;"
+  "SELECT region, beneficiary_count, high_risk_count, dropout_rate FROM gold.regional_risk_stats;"
+docker exec -it inuka-postgres psql -U inuka -d inuka_risk_radar -c \
+  "SELECT region, pillar, beneficiary_count, dropout_rate FROM gold.pillar_regional_stats;"
 ```
 
 ### Backend SSE hook
@@ -121,4 +123,7 @@ events = fetch_latest_kafka_telemetry(limit=20)  # poll ~every 2s
 
 ## Seam 1 (resolved)
 
-Seed records include `travel_distance_km` and `assignment_completion`.
+Seed records include `travel_distance_km`, `assignment_completion`, `pillar`
+(Scholarship | Plus | Vocational | Tech), and `dropped_out` (historical synthetic
+ML target). Silver demographics + identity graph carry both; Gold exposes
+`dropout_rate` and `gold.pillar_regional_stats` for programme analytics.
