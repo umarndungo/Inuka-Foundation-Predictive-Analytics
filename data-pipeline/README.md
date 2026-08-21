@@ -2,6 +2,35 @@
 
 Synthetic-only data fabric for Inuka Risk Radar (Bronze → Silver → Gold).
 
+## Architecture — streaming ETL (medallion)
+
+This is a **streaming medallion pipeline**, not a classic batch ETL stack
+(Airflow / dbt / Spark). Extract and load are event-driven via Kafka; transform
+runs as idempotent Postgres views that refresh as soon as Bronze is written.
+
+| Stage | What happens | Where |
+|---|---|---|
+| **Extract** | Synthetic beneficiary events published to Kafka | `scripts/seed_generator.py` → `scripts/kafka_producer_sim.py` |
+| **Load** | Kafka payloads landed as raw JSON in Postgres | `backend/app/services/kafka_consumer.py` → `bronze.telemetry_events` |
+| **Transform** | Dedup, join demographics, regional rollups | `sql/02_silver_identity_graph.sql`, `sql/03_gold_aggregates.sql` |
+
+```
+seed JSON → Kafka (beneficiary.telemetry / system.alerts)
+         → Bronze (raw JSON events)
+         → Silver (identity graph, one row per beneficiary)
+         → Gold (regional_risk_stats, hourly volumes, alert stats)
+```
+
+| Layer | Objects | Purpose |
+|---|---|---|
+| **Bronze** | `bronze.telemetry_events` | Untouched Kafka payloads (telemetry + alerts) |
+| **Silver** | `silver.beneficiary_demographics`, `silver.latest_telemetry`, `silver.beneficiary_identity_graph` | Deduped canonical beneficiary records for ML / `/evaluate` |
+| **Gold** | `gold.regional_risk_stats`, `gold.regional_telemetry_hourly`, `gold.regional_alert_stats` | Pre-aggregates for dashboard + demand forecasting |
+
+There is no separate ETL scheduler. Views are always consistent under Postgres
+MVCC reads, which keeps Kafka → dashboard latency on the near-real-time path
+(target <500ms once the API/SSE layer is wired).
+
 ## Prerequisites
 
 ```bash
