@@ -50,8 +50,8 @@ REGIONS = ("Nairobi", "Kisumu", "Nakuru", "Mombasa", "Eldoret")
 PILLARS = ("Scholarship", "Plus", "Vocational", "Tech")
 
 ML_DIR = Path(__file__).resolve().parent
-# <repo>/backend/app/ml → parents[3] = repo root
-REPO_ROOT = ML_DIR.parents[3]
+# <repo>/backend/app/ml → parents[2] = repo root
+REPO_ROOT = ML_DIR.parents[2]
 DEFAULT_DATA = REPO_ROOT / "data-pipeline" / "data" / "synthetic_beneficiaries.json"
 DEFAULT_MODEL = ML_DIR / "model.pkl"
 DEFAULT_METRICS = ML_DIR / "metrics.json"

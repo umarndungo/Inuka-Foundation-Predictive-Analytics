@@ -1,0 +1,99 @@
+{
+  "eda": {
+    "n_records": 500,
+    "dropout_rate": 0.23,
+    "at_risk_rate": 0.23,
+    "attendance_vs_dropout_corr": -0.2435158494979573,
+    "by_region": {
+      "Eldoret": {
+        "n": 105,
+        "avg_attendance": 0.7121,
+        "avg_grade": 69.7672,
+        "avg_socioeconomic": 2.7959,
+        "avg_family_dropouts": 0.6381,
+        "dropout_rate": 0.1905
+      },
+      "Kisumu": {
+        "n": 92,
+        "avg_attendance": 0.5831,
+        "avg_grade": 63.3989,
+        "avg_socioeconomic": 2.2945,
+        "avg_family_dropouts": 1.7174,
+        "dropout_rate": 0.4565
+      },
+      "Mombasa": {
+        "n": 114,
+        "avg_attendance": 0.6809,
+        "avg_grade": 70.9061,
+        "avg_socioeconomic": 2.7637,
+        "avg_family_dropouts": 0.8509,
+        "dropout_rate": 0.193
+      },
+      "Nairobi": {
+        "n": 97,
+        "avg_attendance": 0.7263,
+        "avg_grade": 69.6163,
+        "avg_socioeconomic": 3.0571,
+        "avg_family_dropouts": 0.6392,
+        "dropout_rate": 0.1546
+      },
+      "Nakuru": {
+        "n": 92,
+        "avg_attendance": 0.7375,
+        "avg_grade": 71.2641,
+        "avg_socioeconomic": 2.7522,
+        "avg_family_dropouts": 0.7283,
+        "dropout_rate": 0.1739
+      }
+    },
+    "by_pillar": {
+      "Plus": {
+        "n": 117,
+        "avg_attendance": 0.6918,
+        "dropout_rate": 0.2137
+      },
+      "Scholarship": {
+        "n": 120,
+        "avg_attendance": 0.6969,
+        "dropout_rate": 0.1833
+      },
+      "Tech": {
+        "n": 134,
+        "avg_attendance": 0.7008,
+        "dropout_rate": 0.2164
+      },
+      "Vocational": {
+        "n": 129,
+        "avg_attendance": 0.6656,
+        "dropout_rate": 0.3023
+      }
+    },
+    "headline": "Attendance vs dropped_out correlation = -0.244 (lower attendance \u2194 higher historical dropout on synthetic data)."
+  },
+  "test": {
+    "precision": 0.42857142857142855,
+    "recall": 0.10344827586206896,
+    "f1": 0.16666666666666666,
+    "roc_auc": 0.6415229885057471,
+    "automation_threshold": 0.75,
+    "positive_rate_at_threshold": 0.056
+  },
+  "feature_importances_top": {
+    "cat__region_Kisumu": 0.19528114795684814,
+    "num__historical_dropouts_in_family": 0.07673446834087372,
+    "num__attendance_rate": 0.07187748700380325,
+    "cat__pillar_Vocational": 0.06601457297801971,
+    "cat__pillar_Tech": 0.0638023391366005,
+    "num__assignment_completion": 0.0635950043797493,
+    "num__travel_distance_km": 0.06101560965180397,
+    "cat__region_Eldoret": 0.05711894482374191,
+    "cat__region_Mombasa": 0.055905163288116455,
+    "num__socioeconomic_index": 0.05477139726281166,
+    "cat__pillar_Plus": 0.053372662514448166,
+    "num__grade_average": 0.051049016416072845
+  },
+  "classification_report": "              precision    recall  f1-score   support\n\n           0       0.78      0.96      0.86        96\n           1       0.43      0.10      0.17        29\n\n    accuracy                           0.76       125\n   macro avg       0.60      0.53      0.51       125\nweighted avg       0.70      0.76      0.70       125\n",
+  "model_path": "C:\\projects\\EMT\\plp\\Inuka-Foundation-Predictive-Analytics\\backend\\app\\ml\\model.pkl",
+  "n_train": 375,
+  "n_test": 125
+}

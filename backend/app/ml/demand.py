@@ -19,7 +19,7 @@ RANDOM_STATE = 42
 REGIONS = ("Nairobi", "Kisumu", "Nakuru", "Mombasa", "Eldoret")
 
 ML_DIR = Path(__file__).resolve().parent
-REPO_ROOT = ML_DIR.parents[3]
+REPO_ROOT = ML_DIR.parents[2]
 DEFAULT_DATA = REPO_ROOT / "data-pipeline" / "data" / "synthetic_beneficiaries.json"
 
 
