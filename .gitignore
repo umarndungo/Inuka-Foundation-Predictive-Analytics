@@ -6,6 +6,12 @@ venv/
 __pycache__/
 *.py[cod]
 *$py.class
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
 
 # Environment variables
 .env
@@ -39,3 +45,14 @@ htmlcov/
 # Temporary files
 *.tmp
 *.temp
+# Keep example environment files
+!.env.example
+!env.example
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
