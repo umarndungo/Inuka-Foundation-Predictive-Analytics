@@ -1,0 +1,86 @@
+-- =============================================================================
+-- Silver layer — beneficiary identity graph
+-- Idempotent. Synthetic data only (no real PII).
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS silver;
+
+-- Static demographic attributes (seeded from synthetic_beneficiaries.json).
+-- historical_dropouts_in_family mimics a sensitive attribute — SYNTHETIC ONLY.
+CREATE TABLE IF NOT EXISTS silver.beneficiary_demographics (
+    beneficiary_id                 TEXT PRIMARY KEY,
+    region                         TEXT        NOT NULL,
+    socioeconomic_index            NUMERIC(4, 2),
+    historical_dropouts_in_family  INTEGER     NOT NULL DEFAULT 0,
+    enrolled_at                    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_silver_demographics_region
+    ON silver.beneficiary_demographics (region);
+
+COMMENT ON TABLE silver.beneficiary_demographics IS
+    'Silver: static synthetic demographics. historical_dropouts_in_family is SYNTHETIC ONLY.';
+
+-- Latest telemetry event per beneficiary (identity resolution / dedup).
+CREATE OR REPLACE VIEW silver.latest_telemetry AS
+SELECT DISTINCT ON (beneficiary_id)
+    beneficiary_id,
+    event_timestamp,
+    ingested_at,
+    payload->>'region'                              AS region,
+    (payload->>'attendance_rate')::DOUBLE PRECISION AS attendance_rate,
+    (payload->>'grade_average')::DOUBLE PRECISION   AS grade_average,
+    (payload->>'assignment_completion')::DOUBLE PRECISION AS assignment_completion,
+    (payload->>'travel_distance_km')::DOUBLE PRECISION    AS travel_distance_km,
+    (payload->>'socioeconomic_index')::DOUBLE PRECISION   AS socioeconomic_index,
+    (payload->>'historical_dropouts_in_family')::INTEGER  AS historical_dropouts_in_family,
+    payload
+FROM bronze.telemetry_events
+WHERE topic = 'beneficiary.telemetry'
+  AND beneficiary_id IS NOT NULL
+ORDER BY beneficiary_id, event_timestamp DESC NULLS LAST, ingested_at DESC;
+
+COMMENT ON VIEW silver.latest_telemetry IS
+    'Deduped: one row per beneficiary_id from the newest telemetry event.';
+
+-- Canonical identity graph: demographics ⊕ latest telemetry.
+-- Prefers demographic region/socioeconomic/family flags when present;
+-- falls back to payload values for telemetry-only beneficiaries.
+CREATE OR REPLACE VIEW silver.beneficiary_identity_graph AS
+WITH ids AS (
+    SELECT beneficiary_id FROM silver.beneficiary_demographics
+    UNION
+    SELECT beneficiary_id FROM silver.latest_telemetry
+)
+SELECT
+    i.beneficiary_id,
+    COALESCE(d.region, t.region) AS region,
+    t.attendance_rate,
+    t.grade_average,
+    t.assignment_completion,
+    t.travel_distance_km,
+    COALESCE(d.socioeconomic_index::DOUBLE PRECISION, t.socioeconomic_index)
+        AS socioeconomic_index,
+    -- SYNTHETIC ONLY — not real personal/family data.
+    COALESCE(d.historical_dropouts_in_family, t.historical_dropouts_in_family, 0)
+        AS historical_dropouts_in_family,
+    t.event_timestamp AS last_event_at,
+    t.ingested_at     AS last_ingested_at,
+    CASE
+        WHEN t.attendance_rate IS NULL THEN 'UNKNOWN'
+        WHEN t.attendance_rate < 0.55
+          OR COALESCE(t.travel_distance_km, 0) > 20
+          OR COALESCE(d.historical_dropouts_in_family, t.historical_dropouts_in_family, 0) >= 2
+            THEN 'HIGH'
+        WHEN t.attendance_rate < 0.70
+          OR COALESCE(t.travel_distance_km, 0) > 12
+          OR COALESCE(d.socioeconomic_index::DOUBLE PRECISION, t.socioeconomic_index, 5) < 2.5
+            THEN 'MEDIUM'
+        ELSE 'LOW'
+    END AS risk_tier
+FROM ids i
+LEFT JOIN silver.beneficiary_demographics d USING (beneficiary_id)
+LEFT JOIN silver.latest_telemetry t USING (beneficiary_id);
+
+COMMENT ON VIEW silver.beneficiary_identity_graph IS
+    'Canonical one-row-per-beneficiary graph for ML + /evaluate lookups. risk_tier is a heuristic until model scores land.';
