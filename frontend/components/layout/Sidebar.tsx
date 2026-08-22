@@ -8,7 +8,7 @@ import { SidebarNav } from "./SidebarNav";
 import { useAppStore } from "@/lib/store";
 import { ChevronLeft, ChevronRight, Shield } from "lucide-react";
 
-export function Sidebar() {
+export function Sidebar({ activeAlertsCount = 0 }: { activeAlertsCount?: number }) {
   const { sidebarOpen, toggleSidebar } = useAppStore();
   const collapsed = !sidebarOpen;
 
@@ -29,7 +29,7 @@ export function Sidebar() {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="font-heading font-bold text-sm tracking-tight text-foreground truncate">
-                  Inuka Sentinel
+                  Inuka Risk Radar
                 </span>
                 <span className="text-[9px] text-muted-foreground font-mono truncate uppercase tracking-wider">
                   Risk Intelligence
@@ -49,7 +49,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation List */}
-        <SidebarNav collapsed={collapsed} />
+        <SidebarNav collapsed={collapsed} activeAlertsCount={activeAlertsCount} />
       </SidebarComponent>
     </aside>
   );

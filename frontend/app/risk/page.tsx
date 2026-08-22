@@ -2,22 +2,28 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { RiskDistributionChart } from "@/components/dashboard/RiskDistributionChart";
 import { RiskEvaluatorCard } from "@/components/dashboard/RiskEvaluatorCard";
-import { HighRiskBeneficiaries } from "@/components/dashboard/HighRiskBeneficiaries";
+import { BeneficiariesTable } from "@/components/dashboard/BeneficiariesTable";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { api } from "@/lib/api";
+
+export const dynamic = "force-dynamic";
 
 export default async function RiskRadarPage() {
   const [riskDistribution, beneficiariesRes] = await Promise.all([
     api.getRiskDistribution(),
-    api.getBeneficiaries({ pageSize: 100 }),
+    api.getBeneficiaries({ pageSize: 200 }),
   ]);
+
+  const highRiskBeneficiaries = beneficiariesRes.items.filter(
+    (beneficiary) => beneficiary.riskTier === "high" || beneficiary.riskTier === "critical"
+  );
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
           title="Risk Radar & Dropout Prevention Hub"
-          description="Inuka Sentinel Predictive Engine — Monitor drop-out indicators, examine risk drivers, evaluate live scoring simulations, and trigger emergency field interventions."
+          description="Inuka Risk Radar Predictive Engine — Monitor drop-out indicators, examine risk drivers, evaluate live scoring simulations, and trigger emergency field interventions."
         >
           <div className="flex items-center gap-3">
             <StatusBadge
@@ -36,7 +42,15 @@ export default async function RiskRadarPage() {
         </div>
 
         {/* High Risk Directory Table */}
-        <HighRiskBeneficiaries beneficiaries={beneficiariesRes.items} />
+        <BeneficiariesTable
+          beneficiaries={highRiskBeneficiaries}
+          title="High-Risk Beneficiary Directory"
+          description="High- and critical-risk beneficiary cases derived from persisted scoring outputs and ready for intervention review."
+          defaultRiskFilter="all"
+          exportFilePrefix="risk_radar_high_risk"
+          modalDescription="Detailed high-risk beneficiary profile and recommended intervention guide."
+          recommendedActionLabel="Intervention Action"
+        />
       </div>
     </DashboardLayout>
   );

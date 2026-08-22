@@ -49,7 +49,7 @@ export const api = {
   getDemandForecast: (region?: string, days = 7): Promise<DemandForecast> =>
     getDemandForecast(region, days),
 
-  getRegionalDemandBreakdown: () => getRegionalDemandBreakdown(),
+  getRegionalDemandBreakdown: (days = 30) => getRegionalDemandBreakdown(days),
 
   getAlerts: (filters?: { severity?: string; status?: string; region?: string; limit?: number }): Promise<Alert[]> =>
     getAlerts(filters),
@@ -63,8 +63,11 @@ export const api = {
       const { mockKPIMetrics } = await import("@/lib/mock/data");
       return mockKPIMetrics;
     }
-    const res = await fetch(`${API_BASE}/api/v1/metrics/kpi`);
-    if (!res.ok) throw new Error("Failed to fetch KPI metrics");
+
+    const res = await fetch(`${API_BASE}/api/v1/metrics/kpi`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch KPI metrics: HTTP ${res.status}`);
+    }
     return res.json();
   },
 
@@ -73,8 +76,11 @@ export const api = {
       const { mockSystemStatus } = await import("@/lib/mock/data");
       return mockSystemStatus;
     }
-    const res = await fetch(`${API_BASE}/api/v1/system/status`);
-    if (!res.ok) throw new Error("Failed to fetch system status");
+
+    const res = await fetch(`${API_BASE}/api/v1/system/status`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch system status: HTTP ${res.status}`);
+    }
     return res.json();
   },
 
@@ -83,8 +89,11 @@ export const api = {
       const { mockMapRegions } = await import("@/lib/mock/data");
       return mockMapRegions;
     }
-    const res = await fetch(`${API_BASE}/api/v1/map/regions`);
-    if (!res.ok) throw new Error("Failed to fetch map regions");
+
+    const res = await fetch(`${API_BASE}/api/v1/map/regions`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch map regions: HTTP ${res.status}`);
+    }
     return res.json();
   },
 
@@ -93,8 +102,11 @@ export const api = {
       const { mockFieldWorkers } = await import("@/lib/mock/data");
       return mockFieldWorkers;
     }
-    const res = await fetch(`${API_BASE}/api/v1/field-workers`);
-    if (!res.ok) throw new Error("Failed to fetch field workers");
+
+    const res = await fetch(`${API_BASE}/api/v1/field-workers`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch field workers: HTTP ${res.status}`);
+    }
     return res.json();
   },
 

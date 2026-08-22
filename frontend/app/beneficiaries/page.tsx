@@ -1,10 +1,12 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HighRiskBeneficiaries } from "@/components/dashboard/HighRiskBeneficiaries";
+import { BeneficiariesTable } from "@/components/dashboard/BeneficiariesTable";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Users } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 export default async function BeneficiariesPage() {
   const paginatedRes = await api.getBeneficiaries({ pageSize: 100 });
@@ -13,7 +15,19 @@ export default async function BeneficiariesPage() {
   const criticalBeneficiaries = beneficiaries.filter((b) => b.riskTier === "critical");
   const highBeneficiaries = beneficiaries.filter((b) => b.riskTier === "high");
 
-  const regions = ["Nairobi", "Kisumu", "Nakuru", "Mombasa", "Eldoret"];
+  const regionalSummaries = Object.values(
+    beneficiaries.reduce<Record<string, { region: string; count: number; highRisk: number }>>((acc, beneficiary) => {
+      const key = beneficiary.region;
+      if (!acc[key]) {
+        acc[key] = { region: beneficiary.region, count: 0, highRisk: 0 };
+      }
+      acc[key].count += 1;
+      if (beneficiary.riskTier === "high" || beneficiary.riskTier === "critical") {
+        acc[key].highRisk += 1;
+      }
+      return acc;
+    }, {})
+  ).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region));
 
   return (
     <DashboardLayout>
@@ -27,13 +41,21 @@ export default async function BeneficiariesPage() {
             <StatusBadge status="high" label={`${highBeneficiaries.length} High Risk`} showDot size="sm" />
             <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary px-2.5 py-1 rounded-full border border-border/60 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-primary" />
-              {beneficiaries.length} Enrolled
+              {paginatedRes.total} Enrolled
             </span>
           </div>
         </PageHeader>
 
         {/* Actionable Beneficiaries Data Table */}
-        <HighRiskBeneficiaries beneficiaries={beneficiaries} />
+        <BeneficiariesTable
+          beneficiaries={beneficiaries}
+          title="Beneficiary Directory"
+          description="Persisted beneficiary records with risk scores, top drivers, and recommended follow-up actions."
+          defaultRiskFilter="all"
+          exportFilePrefix="beneficiary_directory"
+          modalDescription="Detailed beneficiary profile sourced from persisted synthetic program data."
+          recommendedActionLabel="Recommended Follow-Up"
+        />
 
         {/* Demographic & Cohort Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -42,9 +64,7 @@ export default async function BeneficiariesPage() {
               <CardTitle className="text-base font-semibold">Regional Concentration</CardTitle>
             </CardHeader>
             <CardContent className="p-5 space-y-3">
-              {regions.map((region) => {
-                const count = beneficiaries.filter((b) => b.region === region).length;
-                const highRisk = beneficiaries.filter((b) => b.region === region && (b.riskTier === "high" || b.riskTier === "critical")).length;
+              {regionalSummaries.map(({ region, count, highRisk }) => {
                 const pct = count > 0 ? ((highRisk / count) * 100).toFixed(1) : "0";
                 return (
                   <div key={region} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/40 text-xs">

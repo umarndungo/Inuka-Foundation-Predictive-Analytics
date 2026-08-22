@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Map, NavigationControl, ScaleControl, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapPin, X, Compass } from "lucide-react";
-import type { MapRegion, Beneficiary } from "@/types";
-import { mockMapRegions, mockBeneficiaries, mockFieldWorkers } from "@/lib/mock/data";
+import type { Beneficiary, FieldWorker, MapRegion } from "@/types";
 import { getRiskTier } from "@/lib/utils";
 
 const DEFAULT_CENTER: [number, number] = [36.8219, -1.2921];
@@ -30,9 +29,12 @@ const getRiskColorHex = (tier: string) => {
 
 interface FieldMapProps {
   className?: string;
+  mapRegions: MapRegion[];
+  beneficiaries: Beneficiary[];
+  fieldWorkers: FieldWorker[];
 }
 
-export function FieldMap({ className }: FieldMapProps) {
+export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }: FieldMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<MapRegion | null>(null);
@@ -58,7 +60,7 @@ export function FieldMap({ className }: FieldMapProps) {
     map.on("load", () => {
       setMapLoaded(true);
 
-      mockMapRegions.forEach((region) => {
+      mapRegions.forEach((region) => {
         const el = document.createElement("div");
         el.className = "region-marker";
         const tier = getRiskTier(region.riskScore);
@@ -90,13 +92,16 @@ export function FieldMap({ className }: FieldMapProps) {
       if (showBeneficiaries) {
         addBeneficiaryMarkers(map);
       }
+      if (showFieldWorkers) {
+        addFieldWorkerMarkers(map);
+      }
     });
 
     mapRef.current = map;
-  }, [showBeneficiaries]);
+  }, [beneficiaries, mapRegions, showBeneficiaries, showFieldWorkers]);
 
   const addBeneficiaryMarkers = (map: Map) => {
-    const highRiskBeneficiaries = mockBeneficiaries.filter(
+    const highRiskBeneficiaries = beneficiaries.filter(
       (b) => b.riskTier === "high" || b.riskTier === "critical"
     );
 
@@ -120,6 +125,28 @@ export function FieldMap({ className }: FieldMapProps) {
         setSelectedBeneficiary(b);
         setSelectedRegion(null);
       });
+    });
+  };
+
+  const addFieldWorkerMarkers = (map: Map) => {
+    fieldWorkers.forEach((worker) => {
+      const region = mapRegions.find((item) => item.name.toLowerCase() === worker.region.toLowerCase());
+      if (!region) return;
+
+      const [lng, lat] = region.coordinates;
+      const el = document.createElement("div");
+      el.innerHTML = `
+        <div style="
+          width: 16px; height: 16px; border-radius: 9999px;
+          background: ${worker.isOnline ? "#16A34A" : "#71717A"};
+          border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+          cursor: pointer;
+        " title="${worker.name} (${worker.region})"></div>
+      `;
+
+      new Marker({ element: el, anchor: "center" })
+        .setLngLat([lng, lat])
+        .addTo(map);
     });
   };
 

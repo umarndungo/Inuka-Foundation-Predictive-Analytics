@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Wifi, WifiOff, Pause, Play, Trash2, Filter, Download, AlertTriangle, CheckCircle, Info, AlertCircle, Cpu, HardDrive, MapPin, Zap } from "lucide-react";
 import type { TelemetryEvent } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
-import { mockTelemetryEvents } from "@/lib/mock/data";
+import { getTelemetryStreamUrl } from "@/lib/api/telemetry";
 
 const EVENT_TYPE_CONFIG = {
   attendance: { icon: CheckCircle, color: "text-zinc-600 dark:text-zinc-400 bg-zinc-500/10", label: "Attendance" },
@@ -34,8 +34,45 @@ interface TelemetryStreamProps {
   compact?: boolean;
 }
 
+function inferEventType(payload: Record<string, unknown>): TelemetryEvent["eventType"] {
+  if (typeof payload.attendance_rate === "number") return "attendance";
+  if (typeof payload.assignment_completion === "number") return "assignment";
+  if (typeof payload.travel_distance_km === "number") return "location";
+  return "engagement";
+}
+
+function inferSeverity(payload: Record<string, unknown>): TelemetryEvent["severity"] {
+  const attendance = typeof payload.attendance_rate === "number" ? payload.attendance_rate : null;
+  if (attendance !== null && attendance < 0.55) return "error";
+  if (attendance !== null && attendance < 0.7) return "warning";
+  return "info";
+}
+
+function normalizeTelemetryEvent(payload: Record<string, unknown>): TelemetryEvent {
+  const meta = (payload._meta ?? payload.meta ?? {}) as Record<string, unknown>;
+  const beneficiaryId = String(payload.beneficiary_id ?? meta.beneficiary_id ?? "unknown");
+  const timestamp = String(meta.event_timestamp ?? meta.ingested_at ?? new Date().toISOString());
+  const region = String(payload.region ?? "Unknown");
+  const eventType = inferEventType(payload);
+  const rawValue = payload.attendance_rate ?? payload.assignment_completion ?? payload.travel_distance_km ?? 0;
+  const value = typeof rawValue === "number" ? rawValue : Number(rawValue) || 0;
+
+  return {
+    id: String(meta.event_id ?? `${beneficiaryId}-${timestamp}`),
+    timestamp,
+    beneficiaryId,
+    beneficiaryCode: beneficiaryId.toUpperCase(),
+    eventType,
+    deviceId: String(payload.device_id ?? `${region.slice(0, 3).toUpperCase()}-DEVICE`),
+    region,
+    value,
+    severity: inferSeverity(payload),
+    metadata: payload,
+  };
+}
+
 export function TelemetryStream({ className, compact = false }: TelemetryStreamProps) {
-  const [events, setEvents] = useState<TelemetryEvent[]>(mockTelemetryEvents);
+  const [events, setEvents] = useState<TelemetryEvent[]>([]);
   const [isLive, setIsLive] = useState(true);
   const [severityFilter, setSeverityFilter] = useState<"all" | "info" | "warning" | "error">("all");
   const [typeFilter, setTypeFilter] = useState<"all" | keyof typeof EVENT_TYPE_CONFIG>("all");
@@ -56,32 +93,34 @@ export function TelemetryStream({ className, compact = false }: TelemetryStreamP
   });
 
   useEffect(() => {
-    if (!isLive) return;
+    if (!isLive) {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+      return;
+    }
 
-    const simulateLiveEvents = () => {
-      const eventTypes: TelemetryEvent["eventType"][] = ["attendance", "engagement", "location", "device_health", "assignment"];
-      const severities: TelemetryEvent["severity"][] = ["info", "info", "info", "warning", "error"];
-      const regions = ["Nairobi", "Kisumu", "Nakuru", "Mombasa", "Eldoret"];
-      const devices = ["NRB-001", "NRB-002", "KSM-101", "KSM-102", "NKR-201", "NKR-202", "MBA-301", "ELD-401"];
-      const beneficiaries = ["B-1001", "B-1002", "B-1003", "B-1004", "B-1005", "B-1006"];
+    const source = new EventSource(getTelemetryStreamUrl());
+    eventSourceRef.current = source;
 
-      const newEvent: TelemetryEvent = {
-        id: `tel-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        beneficiaryId: `ben-${Math.floor(Math.random() * 12)}`,
-        beneficiaryCode: beneficiaries[Math.floor(Math.random() * beneficiaries.length)],
-        eventType: eventTypes[Math.floor(Math.random() * eventTypes.length)],
-        deviceId: devices[Math.floor(Math.random() * devices.length)],
-        region: regions[Math.floor(Math.random() * regions.length)],
-        value: Math.random(),
-        severity: severities[Math.floor(Math.random() * severities.length)],
-      };
+    source.addEventListener("telemetry", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data) as Record<string, unknown>;
+        const normalized = normalizeTelemetryEvent(payload);
+        setEvents((prev) => [normalized, ...prev.filter((item) => item.id !== normalized.id)].slice(0, 200));
+      } catch {
+        // Ignore malformed SSE payloads and keep stream alive.
+      }
+    });
 
-      setEvents((prev) => [newEvent, ...prev].slice(0, 200));
+    source.addEventListener("error", () => {
+      source.close();
+      eventSourceRef.current = null;
+    });
+
+    return () => {
+      source.close();
+      eventSourceRef.current = null;
     };
-
-    const interval = setInterval(simulateLiveEvents, 3000 + Math.random() * 4000);
-    return () => clearInterval(interval);
   }, [isLive]);
 
   const clearEvents = () => setEvents([]);

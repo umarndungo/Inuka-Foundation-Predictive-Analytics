@@ -121,35 +121,84 @@ See the [full monorepo layout](#) in the implementation spec for every file.
 
 ## Getting Started
 
+### Full demo stack with Docker Compose
+
 ```bash
 # 1. Clone and enter the repo
-git clone <repo-url> && cd inuka-sentinel
+git clone https://github.com/umarndungo/Inuka-Foundation-Predictive-Analytics && cd Inuka-Risk-Radar
 
-# 2. Start the data fabric (Kafka + PostgreSQL)
-docker compose up -d kafka postgres
+# 2. Bring up the full stack and bootstrap demo data
+./scripts/demo_up.sh
+```
 
-# 3. Generate synthetic data and seed the pipeline
-python data-pipeline/scripts/seed_generator.py
-python data-pipeline/scripts/kafka_producer_sim.py
+This starts:
+- `redpanda` (Kafka-compatible event streaming)
+- `postgres` (Bronze / Silver / Gold storage)
+- `backend` (FastAPI API)
+- `bronze-consumer` (Kafka -> Postgres)
+- `n8n` (workflow automation)
+- `frontend` (Next.js dashboard, configured to call `http://backend:8000` inside Docker)
 
-# 4. Run schema migrations
-psql -f data-pipeline/sql/01_bronze_schema.sql
-psql -f data-pipeline/sql/02_silver_identity_graph.sql
-psql -f data-pipeline/sql/03_gold_aggregates.sql
+The pipeline now also supports Silver reference/master entities for frontend authenticity:
+- `silver.beneficiaries_master`
+- `silver.field_workers`
+- `silver.beneficiary_assignments`
 
-# 5. Start the backend
+And an operations / analytics layer for persisted scoring, forecast, trend, and action state:
+- `gold.beneficiary_risk_scores`
+- `gold.demand_forecasts`
+- `gold.risk_trend_daily`
+- `operations.alerts`
+- `operations.interventions`
+
+Endpoints:
+- API docs: `http://localhost:8000/docs`
+- Backend health: `http://localhost:8000/health`
+- Dashboard: `http://localhost:3000`
+- n8n UI: `http://localhost:5678`
+
+### Manual compose bring-up
+
+```bash
+docker compose up -d --build
+```
+
+To seed demo data, load demographics/reference data, materialize demand artifacts, publish telemetry, backfill multi-day risk trend history, and optionally train the model:
+
+> The bootstrap and training steps now run against the synthetic seed file mounted into the backend container at `/workspace/data-pipeline/data/synthetic_beneficiaries.json`.
+>
+> The demo bootstrap now publishes telemetry with `--no-refresh-ts` so Bronze/Silver telemetry remains timestamp-aligned with `synthetic_beneficiaries.json` by default.
+
+```bash
+./scripts/demo_up.sh
+```
+
+To rerun the demo bootstrap later against an already-running stack without recreating containers:
+
+```bash
+./scripts/demo_up.sh --bootstrap-demo
+```
+
+### Local development split mode
+
+If you want to run only infrastructure in Docker and develop app layers locally:
+
+```bash
+# Infra + automation
+docker compose up -d redpanda redpanda-init postgres n8n
+
+# Backend
 cd backend && pip install -r requirements.txt
 uvicorn main:app --reload
 
-# 6. Start the frontend
+# Frontend
 cd frontend && npm install
-npm run dev
-
-# 7. Start n8n (self-hosted, Docker)
-docker compose up -d n8n
+NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_USE_MOCK=false npm run dev
 ```
 
 The API docs are available at `http://localhost:8000/docs` once the backend is running. The dashboard runs at `http://localhost:3000`.
+
+> Note: when the frontend runs in Docker it must call the backend over the Compose network using `http://backend:8000`. Only local non-Docker frontend development should use `http://localhost:8000`.
 
 > **Note:** All data used in this project is synthetic. No real beneficiary data is processed.
 
@@ -188,7 +237,7 @@ Server-Sent Events, ~2s cadence, streams the latest Kafka telemetry near-real-ti
 
 ### `GET /api/v1/demand`
 
-Regional demand forecast (Nairobi, Kisumu, Nakuru, Mombasa, Eldoret) for the Demand Map.
+Regional demand forecast (Nairobi, Kisumu, Nakuru, Mombasa, Eldoret) for the Demand Map, now backed by persisted `gold.demand_forecasts` artifacts when available.
 
 > ⚠️ **Known gap:** the base synthetic data generator does not currently produce `travel_distance_km` or `assignment_completion`, both required by `/evaluate`. This must be resolved on Day 1 — either extend `seed_generator.py`, or adjust the contract. See the [Integration Notes](#integration-notes).
 
@@ -200,7 +249,7 @@ Regional demand forecast (Nairobi, Kisumu, Nakuru, Mombasa, Eldoret) for the Dem
 2. A Kafka consumer writes raw events into **PostgreSQL Bronze**.
 3. Bronze is joined against static demographic data into **Silver** (the beneficiary identity graph).
 4. Silver is aggregated into **Gold** (regional stats consumed by ML and the dashboard).
-5. The XGBoost model (`predict.py`) scores beneficiaries on request via `/api/v1/evaluate`; a separate forecasting pipeline produces regional demand estimates via `/api/v1/demand`.
+5. The XGBoost model (`predict.py`) scores beneficiaries on request via `/api/v1/evaluate`; persisted score artifacts feed `gold.risk_trend_daily`, and a separate forecasting pipeline materializes regional demand estimates into `gold.demand_forecasts` for `/api/v1/demand`.
 6. High-risk scores (`> 0.75`) trigger an n8n webhook → Twilio SMS → and log an event to the `system.alerts` Kafka topic.
 7. The Next.js dashboard consumes all of this via REST + SSE, with an offline-first IndexedDB queue for field data entered without connectivity, syncing back via `/api/offline-sync` on reconnect.
 

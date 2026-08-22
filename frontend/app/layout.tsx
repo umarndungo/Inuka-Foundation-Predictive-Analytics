@@ -15,12 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Inuka Sentinel | Predictive Intelligence Dashboard",
+  title: "Inuka Risk Radar | Predictive Intelligence Dashboard",
   description: "Real-time predictive analytics and field operations intelligence for Inuka Foundation",
   keywords: ["predictive analytics", "beneficiary risk", "field operations", "Inuka Foundation", "dashboard"],
   authors: [{ name: "Inuka Foundation" }],
   openGraph: {
-    title: "Inuka Sentinel",
+    title: "Inuka Risk Radar",
     description: "Predictive Intelligence & Program Automation",
     type: "website",
   },

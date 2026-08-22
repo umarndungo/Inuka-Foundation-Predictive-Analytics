@@ -115,14 +115,7 @@ ML_DIR = Path(__file__).resolve().parent
 
 # backend/app/ml -> repo root
 REPO_ROOT = ML_DIR.parents[2]
-
-DEFAULT_DATA = (
-    REPO_ROOT
-    / "data-pipeline"
-    / "data"
-    / "synthetic_beneficiaries.json"
-)
-
+DEFAULT_DATA = REPO_ROOT / "data-pipeline" / "data" / "synthetic_beneficiaries.json"
 DEFAULT_MODEL = ML_DIR / "model.pkl"
 DEFAULT_METRICS = ML_DIR / "metrics.json"
 OUTPUT_DIR = ML_DIR / "evaluation"

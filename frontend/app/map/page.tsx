@@ -7,10 +7,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
 import { MapPin } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function MapPage() {
-  const [mapRegions, fieldWorkers] = await Promise.all([
+  const [mapRegions, fieldWorkers, beneficiariesRes] = await Promise.all([
     api.getMapRegions(),
     api.getFieldWorkers(),
+    api.getBeneficiaries({ pageSize: 1000 }),
   ]);
 
   const activeWorkers = fieldWorkers.filter((w) => w.isOnline);
@@ -28,7 +31,11 @@ export default async function MapPage() {
         </PageHeader>
 
         {/* Spatial Map Component */}
-        <FieldMap />
+        <FieldMap
+          mapRegions={mapRegions}
+          fieldWorkers={fieldWorkers}
+          beneficiaries={beneficiariesRes.items}
+        />
 
         {/* Regional Hub Operations Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
