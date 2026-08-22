@@ -68,40 +68,24 @@ export async function evaluateRisk(payload: EvaluateRequest): Promise<EvaluateRe
 }
 
 export async function getRiskDistribution(): Promise<RiskDistribution> {
-  const getMock = async () => {
+  if (USE_MOCK) {
     const { mockRiskDistribution } = await import("@/lib/mock/data");
     return mockRiskDistribution;
-  };
-
-  if (USE_MOCK) {
-    return getMock();
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/risk/distribution`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch risk distribution");
-    return res.json();
-  } catch {
-    return getMock();
-  }
+  const res = await fetch(`${API_BASE}/api/v1/risk/distribution`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch risk distribution");
+  return res.json();
 }
 
 export async function getRiskTrend(range: "24h" | "7d" | "30d" = "7d"): Promise<RiskTrendPoint[]> {
-  const getMock = async () => {
+  if (USE_MOCK) {
     const { mockRiskTrend } = await import("@/lib/mock/data");
     const days = range === "24h" ? 1 : range === "7d" ? 7 : 30;
     return mockRiskTrend.slice(-days);
-  };
-
-  if (USE_MOCK) {
-    return getMock();
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/risk/trend?range=${range}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch risk trend");
-    return res.json();
-  } catch {
-    return getMock();
-  }
+  const res = await fetch(`${API_BASE}/api/v1/risk/trend?period=${range}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch risk trend");
+  return res.json();
 }

@@ -13,7 +13,5 @@ export async function getTelemetryEvents(limit = 100): Promise<TelemetryEvent[]>
     return mockTelemetryEvents.slice(0, limit);
   }
 
-  const res = await fetch(`${API_BASE}/api/v1/telemetry/events?limit=${limit}`);
-  if (!res.ok) throw new Error("Failed to fetch telemetry events");
-  return res.json();
+  throw new Error("Historical telemetry event fetching is not supported by the live API; use the SSE stream at /api/v1/telemetry/stream.");
 }

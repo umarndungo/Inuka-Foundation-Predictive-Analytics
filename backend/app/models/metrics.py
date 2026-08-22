@@ -18,10 +18,10 @@ RegionalRiskStats -> gold.regional_risk_stats
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, Integer, Numeric, String
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -40,6 +40,21 @@ class TelemetryEvent(Base):
     event_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class BeneficiaryRiskScore(Base):
+    __tablename__ = "beneficiary_risk_scores"
+    __table_args__ = {"schema": "gold"}
+
+    score_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    beneficiary_id: Mapped[str] = mapped_column(String)
+    scored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    risk_score: Mapped[float] = mapped_column(Numeric)
+    risk_tier: Mapped[str] = mapped_column(String)
+    drivers: Mapped[list[str] | dict[str, Any]] = mapped_column(JSONB)
+    recommended_action: Mapped[str] = mapped_column(Text)
+    model_version: Mapped[str] = mapped_column(String)
+    automation_triggered: Mapped[bool] = mapped_column(Boolean)
 
 
 class RegionalRiskStats(Base):
@@ -61,3 +76,37 @@ class RegionalRiskStats(Base):
     unknown_risk_count: Mapped[int] = mapped_column(BigInteger)
     last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_ingested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DemandForecastArtifact(Base):
+    __tablename__ = "demand_forecasts"
+    __table_args__ = {"schema": "gold"}
+
+    forecast_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    forecast_date: Mapped[date] = mapped_column(Date)
+    region: Mapped[str] = mapped_column(String)
+    horizon_days: Mapped[int] = mapped_column(Integer)
+    historical: Mapped[list[float]] = mapped_column(JSONB)
+    predicted: Mapped[list[float]] = mapped_column(JSONB)
+    confidence: Mapped[list[float]] = mapped_column(JSONB)
+    dates: Mapped[list[str]] = mapped_column(JSONB)
+    expected_change: Mapped[float] = mapped_column(Numeric)
+    peak_day: Mapped[date | None] = mapped_column(Date)
+    summary_confidence: Mapped[int] = mapped_column(Integer)
+    risk_factor: Mapped[float] = mapped_column(Numeric)
+    predicted_demand: Mapped[float] = mapped_column(Numeric)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RiskTrendDaily(Base):
+    __tablename__ = "risk_trend_daily"
+    __table_args__ = {"schema": "gold"}
+
+    snapshot_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    low_count: Mapped[int] = mapped_column(Integer)
+    medium_count: Mapped[int] = mapped_column(Integer)
+    high_count: Mapped[int] = mapped_column(Integer)
+    critical_count: Mapped[int] = mapped_column(Integer)
+    total_count: Mapped[int] = mapped_column(Integer)
+    overall_ratio: Mapped[float] = mapped_column(Numeric)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

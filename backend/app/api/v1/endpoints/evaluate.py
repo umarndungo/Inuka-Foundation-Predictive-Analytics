@@ -34,14 +34,21 @@ from app.models.beneficiary import BeneficiaryIdentityGraph
 from app.schemas.evaluate import EvaluateRequest, EvaluateResponse
 from app.services.kafka_producer import publish_alert
 from app.services.n8n_trigger import trigger_n8n_webhook
+from app.services.risk_scores import persist_risk_score, refresh_risk_trend_snapshot
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 settings = get_settings()
 
-# Fields the Identity Graph can backfill when the caller's request doesn't
-# include them — never overrides what the caller explicitly sent.
-_GRAPH_BACKFILL_FIELDS = (
+# Fields sourced from the Identity Graph for scoring so /evaluate stays aligned
+# with synthetic data that has been ingested and persisted, rather than caller-
+# supplied feature values. We keep the request contract unchanged for frontend
+# compatibility, but DB-derived values are the source of truth.
+_GRAPH_SCORE_FIELDS = (
+    "region",
+    "attendance_rate",
+    "assignment_completion",
+    "travel_distance_km",
     "grade_average",
     "socioeconomic_index",
     "historical_dropouts_in_family",
@@ -132,11 +139,19 @@ async def evaluate_beneficiary(
             detail=f"Beneficiary ID '{payload.beneficiary_id}' not found in the Identity Graph",
         )
 
-    enriched: dict[str, Any] = payload.model_dump()
-    for field in _GRAPH_BACKFILL_FIELDS:
+    enriched: dict[str, Any] = {"beneficiary_id": payload.beneficiary_id}
+    for field in _GRAPH_SCORE_FIELDS:
         value = getattr(graph_row, field, None)
         if value is not None:
-            enriched.setdefault(field, value)
+            enriched[field] = value
+
+    # If the identity graph is missing a required scoring field, fall back to the
+    # request payload only for that specific gap so the route remains usable while
+    # still preferring ingested synthetic data as the system of record.
+    request_values = payload.model_dump()
+    for field in ("region", "attendance_rate", "assignment_completion", "travel_distance_km"):
+        if enriched.get(field) is None:
+            enriched[field] = request_values[field]
 
     model_status = "live"
     try:
@@ -153,6 +168,18 @@ async def evaluate_beneficiary(
 
     response = EvaluateResponse(**scored, model_status=model_status)
 
+    await persist_risk_score(
+        db,
+        beneficiary_id=response.beneficiary_id,
+        risk_score=response.risk_score,
+        risk_tier=response.risk_tier,
+        drivers=response.drivers,
+        recommended_action=response.recommended_action,
+        model_version=model_status,
+        automation_triggered=response.automation_triggered,
+    )
+    await refresh_risk_trend_snapshot(db)
+
     # Surface fields for the audit-logging middleware (main.py) without
     # coupling it to this route's internals.
     request.state.beneficiary_id = response.beneficiary_id
@@ -164,7 +191,7 @@ async def evaluate_beneficiary(
             beneficiary_id=response.beneficiary_id,
             risk_score=response.risk_score,
             risk_tier=response.risk_tier,
-            region=payload.region,
+            region=str(enriched.get("region") or payload.region),
         )
 
     return response
