@@ -8,33 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.models.beneficiary import BeneficiaryIdentityGraph
+from app.models.metrics import BeneficiaryRiskScore
+from app.models.reference import BeneficiaryMaster
 from app.schemas.beneficiaries import BeneficiaryResponse, PaginatedBeneficiariesResponse
 
 router = APIRouter()
-
-_REGION_COORDS: dict[str, tuple[float, float]] = {
-    "Nairobi": (-1.286389, 36.817223),
-    "Kisumu": (-0.091702, 34.767956),
-    "Nakuru": (-0.303099, 36.080025),
-    "Mombasa": (-4.043477, 39.668206),
-    "Eldoret": (0.514277, 35.269779),
-}
-
-_SUBCOUNTY_BY_REGION: dict[str, str] = {
-    "Nairobi": "Kasarani",
-    "Kisumu": "Kisumu East",
-    "Nakuru": "Nakuru West",
-    "Mombasa": "Kisauni",
-    "Eldoret": "Ainabkoi",
-}
-
-_SCHOOL_BY_REGION: dict[str, str] = {
-    "Nairobi": "Nairobi Learning Centre",
-    "Kisumu": "Kisumu Community School",
-    "Nakuru": "Nakuru Hills Academy",
-    "Mombasa": "Mombasa Coast School",
-    "Eldoret": "Eldoret Future Academy",
-}
 
 
 def _risk_score(row: BeneficiaryIdentityGraph) -> float:
@@ -89,46 +67,67 @@ def _recommended_action(score: float) -> str:
     return "Continue routine monitoring"
 
 
-def _coords(region: str, beneficiary_id: str) -> tuple[float, float]:
-    base_lat, base_lng = _REGION_COORDS.get(region, (0.0, 0.0))
-    seed = sum(ord(c) for c in beneficiary_id) % 100
-    offset = (seed / 1000.0) - 0.05
-    return (round(base_lat + offset, 6), round(base_lng - offset, 6))
+def _normalize_persisted_tier(tier: str | None, score: float) -> str:
+    if not tier:
+        return _risk_tier(score)
+    tier_u = tier.upper()
+    if tier_u == "LOW":
+        return "low"
+    if tier_u == "MEDIUM":
+        return "medium"
+    if tier_u == "HIGH":
+        return "critical" if score >= 0.85 else "high"
+    return _risk_tier(score)
 
 
-def _to_response(row: BeneficiaryIdentityGraph) -> BeneficiaryResponse:
-    region = row.region or "Unknown"
-    score = _risk_score(row)
-    tier = _risk_tier(score)
-    lat, lng = _coords(region, row.beneficiary_id)
-    grade = max(3, min(8, int(round((row.grade_average or 65) / 10))))
-    age = grade + 6
-    gender = "F" if sum(ord(c) for c in row.beneficiary_id) % 2 == 0 else "M"
+def _persisted_drivers(score_row: BeneficiaryRiskScore | None, fallback_row: BeneficiaryIdentityGraph) -> list[str]:
+    if score_row and isinstance(score_row.drivers, list) and score_row.drivers:
+        return [str(item) for item in score_row.drivers]
+    return _drivers(fallback_row)
+
+
+def _persisted_recommended_action(score_row: BeneficiaryRiskScore | None, fallback_score: float) -> str:
+    if score_row and score_row.recommended_action:
+        return str(score_row.recommended_action)
+    return _recommended_action(fallback_score)
+
+
+def _to_response(
+    row: BeneficiaryIdentityGraph,
+    master: BeneficiaryMaster | None,
+    latest_score: BeneficiaryRiskScore | None,
+) -> BeneficiaryResponse:
+    region = row.region or (master.region if master else "Unknown")
+    fallback_score = _risk_score(row)
+    score = round(float(latest_score.risk_score), 2) if latest_score else fallback_score
+    tier = _normalize_persisted_tier(latest_score.risk_tier if latest_score else None, score)
+    lat = master.home_lat if master and master.home_lat is not None else 0.0
+    lng = master.home_lng if master and master.home_lng is not None else 0.0
     last_activity = row.last_event_at.isoformat() if row.last_event_at else datetime.now(timezone.utc).isoformat()
 
     return BeneficiaryResponse(
         id=row.beneficiary_id.lower(),
         code=row.beneficiary_id,
-        name=f"Beneficiary {row.beneficiary_id}",
+        name=master.full_name if master else row.beneficiary_id,
         region=region,
-        subCounty=_SUBCOUNTY_BY_REGION.get(region, region),
-        school=_SCHOOL_BY_REGION.get(region, f"{region} Learning Centre"),
-        grade=grade,
-        age=age,
-        gender=gender,
+        subCounty=master.sub_county if master else region,
+        school=master.school_name if master else f"{region} Learning Centre",
+        grade=master.grade if master else max(3, min(8, int(round((row.grade_average or 65) / 10)))),
+        age=master.age if master else 12,
+        gender=master.gender if master else "F",
         riskScore=score,
         riskTier=tier,
-        riskDrivers=_drivers(row),
-        recommendedAction=_recommended_action(score),
+        riskDrivers=_persisted_drivers(latest_score, row),
+        recommendedAction=_persisted_recommended_action(latest_score, score),
         lastActivity=last_activity,
         attendanceRate=round(float(row.attendance_rate or 0.0), 2),
         assignmentCompletion=round(float(row.assignment_completion or 0.0), 2),
         travelDistanceKm=round(float(row.travel_distance_km or 0.0), 2),
-        phoneNumber=None,
-        fieldWorkerId=f"fw-{(sum(ord(c) for c in row.beneficiary_id) % 12) + 1:03d}",
+        phoneNumber=master.phone_number if master else None,
+        fieldWorkerId=master.field_worker_id if master else None,
         coordinates={"lat": lat, "lng": lng},
         trend=_trend(row),
-        enrollmentDate="2023-01-01",
+        enrollmentDate=master.enrollment_date.isoformat() if master else "2023-01-01",
     )
 
 
@@ -143,12 +142,19 @@ async def list_beneficiaries(
 ) -> PaginatedBeneficiariesResponse:
     result = await db.execute(select(BeneficiaryIdentityGraph))
     rows = result.scalars().all()
-    items = [_to_response(row) for row in rows]
+    master_result = await db.execute(select(BeneficiaryMaster))
+    masters = {row.beneficiary_id: row for row in master_result.scalars().all()}
+    score_result = await db.execute(select(BeneficiaryRiskScore).order_by(BeneficiaryRiskScore.scored_at.desc()))
+    latest_scores: dict[str, BeneficiaryRiskScore] = {}
+    for score_row in score_result.scalars().all():
+        latest_scores.setdefault(score_row.beneficiary_id, score_row)
+    items = [_to_response(row, masters.get(row.beneficiary_id), latest_scores.get(row.beneficiary_id)) for row in rows]
 
     if search:
         search_l = search.lower()
         items = [
-            item for item in items
+            item
+            for item in items
             if search_l in item.code.lower()
             or search_l in item.name.lower()
             or search_l in item.region.lower()
@@ -178,8 +184,10 @@ async def get_beneficiary(
     beneficiary_id: str,
     db: AsyncSession = Depends(get_db),
 ) -> BeneficiaryResponse:
+    canonical_id = beneficiary_id.strip().upper()
+
     result = await db.execute(
-        select(BeneficiaryIdentityGraph).where(BeneficiaryIdentityGraph.beneficiary_id == beneficiary_id)
+        select(BeneficiaryIdentityGraph).where(BeneficiaryIdentityGraph.beneficiary_id == canonical_id)
     )
     row = result.scalar_one_or_none()
     if row is None:
@@ -187,4 +195,15 @@ async def get_beneficiary(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Beneficiary ID '{beneficiary_id}' not found",
         )
-    return _to_response(row)
+
+    master_result = await db.execute(
+        select(BeneficiaryMaster).where(BeneficiaryMaster.beneficiary_id == canonical_id)
+    )
+    master = master_result.scalar_one_or_none()
+    score_result = await db.execute(
+        select(BeneficiaryRiskScore)
+        .where(BeneficiaryRiskScore.beneficiary_id == canonical_id)
+        .order_by(BeneficiaryRiskScore.scored_at.desc())
+    )
+    latest_score = score_result.scalar_one_or_none()
+    return _to_response(row, master, latest_score)

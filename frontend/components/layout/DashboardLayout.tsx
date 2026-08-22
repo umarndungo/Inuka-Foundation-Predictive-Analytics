@@ -7,7 +7,7 @@ import { SidebarNav } from "./SidebarNav";
 import { Header } from "./Header";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAppStore } from "@/lib/store";
-import { mockSystemStatus } from "@/lib/mock/data";
+import { api } from "@/lib/api";
 import { Shield } from "lucide-react";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
@@ -18,10 +18,24 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     // Force light theme
     document.documentElement.classList.remove("dark");
 
-    setSystemStatus({
-      ...mockSystemStatus,
-      lastSync: new Date().toISOString(),
-    });
+    let cancelled = false;
+
+    const loadSystemStatus = async () => {
+      try {
+        const status = await api.getSystemStatus();
+        if (!cancelled) {
+          setSystemStatus(status);
+        }
+      } catch {
+        // Leave system status unset on failure; downstream UI should treat null as unknown.
+      }
+    };
+
+    loadSystemStatus();
+
+    return () => {
+      cancelled = true;
+    };
   }, [setSystemStatus]);
 
   return (

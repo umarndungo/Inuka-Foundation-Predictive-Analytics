@@ -3,7 +3,13 @@
 Use this after:
 
 ```bash
-docker compose up -d --build backend frontend
+./scripts/demo_up.sh
+```
+
+Or, if the stack is already running and you just want to refresh synthetic demo data and artifacts:
+
+```bash
+./scripts/demo_up.sh --bootstrap-demo
 ```
 
 Optional log tails:
@@ -141,6 +147,8 @@ Check:
 - 1 item for `24h`
 - 30 items for `30d`
 
+If you bootstrapped with `./scripts/demo_up.sh` or `--bootstrap-demo`, these periods should now be populated from backfilled historical persisted scores rather than a synthetic API fallback.
+
 ---
 
 ## 4. Beneficiary endpoints
@@ -179,7 +187,7 @@ Expected:
 - filtered results
 
 ### Single beneficiary
-Take one `code`/`beneficiary_id` from the list and test:
+Take one `code`/`beneficiary_id` from the list and test. The detail route now also accepts the lowercase list `id`, but prefer using `code` for canonical checks:
 
 ```bash
 curl "http://localhost:8000/api/v1/beneficiaries/BEN-1000"

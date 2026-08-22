@@ -35,7 +35,9 @@ const CHART_CONFIG: ChartConfig = {
 
 function buildChartData(data: DemandForecast, showPoints: number) {
   const chartData = [];
-  const allDates = [...data.dates.slice(-data.historical.length), ...data.dates.slice(-data.predicted.length)];
+  const historicalDates = data.dates.slice(0, data.historical.length);
+  const predictedDates = data.dates.slice(data.historical.length, data.historical.length + data.predicted.length);
+  const allDates = [...historicalDates, ...predictedDates];
   const allHistorical = [...data.historical, ...Array(data.predicted.length).fill(null)];
   const allPredicted = [...Array(data.historical.length).fill(null), ...data.predicted];
 
@@ -53,14 +55,19 @@ function buildChartData(data: DemandForecast, showPoints: number) {
 export function DemandForecastChart({ data, className, compact = false }: DemandForecastChartProps) {
   const [range, setRange] = useState<"7d" | "14d" | "30d">("14d");
 
-  const daysMap = { "7d": 7, "14d": 14, "30d": 30 };
-  const days = daysMap[range];
-  const totalPoints = data.historical.length + data.predicted.length;
-  const showPoints = Math.min(days, totalPoints);
+  const daysMap = { "7d": 7, "14d": 14, "30d": 30 } as const;
+  const totalForecastPoints = data.predicted.length;
+  const availableRange: Array<"7d" | "14d" | "30d"> =
+    totalForecastPoints >= 30 ? ["7d", "14d", "30d"] : totalForecastPoints >= 14 ? ["7d", "14d"] : ["7d"];
+  const effectiveRange = availableRange.includes(range) ? range : availableRange[availableRange.length - 1];
+  const showForecastDays = Math.min(daysMap[effectiveRange], totalForecastPoints);
+  const showPoints = Math.min(data.historical.length + showForecastDays, data.historical.length + data.predicted.length);
   const chartData = buildChartData(data, showPoints);
 
   const expectedChange = data.summary.expectedChange;
   const isPositive = expectedChange >= 0;
+  const historicalBaseline = data.historical.length > 0 ? Math.round(data.historical.reduce((a, b) => a + b, 0) / data.historical.length) : 0;
+  const predictedPeak = data.predicted.length > 0 ? Math.max(...data.predicted) : 0;
 
   return (
     <Card className={cn("h-full flex flex-col border-none shadow-none rounded-md bg-card overflow-hidden", className)}>
@@ -69,17 +76,17 @@ export function DemandForecastChart({ data, className, compact = false }: Demand
           <div>
             <CardTitle className="text-sm font-semibold flex items-center gap-2 font-mono uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-primary" />
-              Resource Allocation & Kit Demand Forecast
+              {data.region} Resource Allocation & Kit Demand Forecast
             </CardTitle>
             <CardDescription className="text-xs">
-              AI-driven predictive demand modeling for field kit distribution and staff deployment.
+              Persisted synthetic-demand forecast for field kit distribution and staff deployment in {data.region}.
             </CardDescription>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge
               status={isPositive ? "high" : "low"}
-              label={`${isPositive ? "+" : ""}${expectedChange.toFixed(1)}% Demand Surge`}
+              label={`${isPositive ? "+" : ""}${expectedChange.toFixed(1)}% vs Baseline`}
               showDot={isPositive}
               size="sm"
             />
@@ -93,14 +100,14 @@ export function DemandForecastChart({ data, className, compact = false }: Demand
 
         <div className="flex items-center justify-between pt-2.5">
           <div className="flex gap-1 bg-secondary/60 p-0.5 rounded border border-border/40">
-            {(["7d", "14d", "30d"] as const).map((key) => (
+            {availableRange.map((key) => (
               <Button
                 key={key}
-                variant={range === key ? "default" : "ghost"}
+                variant={effectiveRange === key ? "default" : "ghost"}
                 size="sm"
                 className={cn(
                   "h-6 px-2 text-xs font-mono font-medium rounded transition-colors cursor-pointer",
-                  range === key && "bg-background text-foreground shadow-none border border-border/40"
+                  effectiveRange === key && "bg-background text-foreground shadow-none border border-border/40"
                 )}
                 onClick={() => setRange(key)}
               >
@@ -173,14 +180,12 @@ export function DemandForecastChart({ data, className, compact = false }: Demand
           <div className="p-2.5 rounded bg-secondary/50 border border-border/40 text-xs space-y-0.5">
             <span className="text-muted-foreground block text-[11px] font-mono">Historical Baseline</span>
             <span className="text-lg font-bold font-sans text-foreground">
-              {Math.round(data.historical.reduce((a, b) => a + b, 0) / data.historical.length).toLocaleString()}
+              {historicalBaseline.toLocaleString()}
             </span>
           </div>
           <div className="p-2.5 rounded bg-red-500/10 border border-red-500/20 text-xs space-y-0.5">
             <span className="text-primary font-semibold font-mono block text-[11px]">Predicted Peak</span>
-            <span className="text-lg font-bold font-sans text-primary">
-              {Math.round(data.predicted.reduce((a, b) => a + b, 0) / data.predicted.length).toLocaleString()}
-            </span>
+            <span className="text-lg font-bold font-sans text-primary">{predictedPeak.toLocaleString()}</span>
           </div>
           <div className="p-2.5 rounded bg-secondary/50 border border-border/40 text-xs space-y-0.5">
             <span className="text-muted-foreground block text-[11px] font-mono">Model Confidence</span>

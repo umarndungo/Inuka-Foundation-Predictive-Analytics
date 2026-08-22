@@ -131,7 +131,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(SQLAlchemyError)
 async def db_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
-    logger.exception("Database error on %s %s", request.method, request.url.path)
+    logger.exception(
+        "Database error on %s %s: %s",
+        request.method,
+        request.url.path,
+        repr(exc),
+    )
     return JSONResponse(status_code=503, content={"detail": "Database temporarily unavailable"})
 
 
