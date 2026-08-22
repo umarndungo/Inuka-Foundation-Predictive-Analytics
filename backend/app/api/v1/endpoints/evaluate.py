@@ -31,6 +31,7 @@ from starlette.concurrency import run_in_threadpool
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.models.beneficiary import BeneficiaryIdentityGraph
+from app.models.operations import Alert
 from app.schemas.evaluate import EvaluateRequest, EvaluateResponse
 from app.services.kafka_producer import publish_alert
 from app.services.n8n_trigger import trigger_n8n_webhook
@@ -98,17 +99,59 @@ def _stub_score(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _fire_automation(*, beneficiary_id: str, risk_score: float, risk_tier: str, region: str) -> None:
+async def _persist_alert_record(
+    db: AsyncSession,
+    *,
+    beneficiary_id: str,
+    risk_score: float,
+    risk_tier: str,
+    region: str,
+    drivers: list[str],
+    recommended_action: str,
+) -> Alert:
+    created_at = datetime.now(timezone.utc)
+    alert = Alert(
+        alert_id=f"ALT-{uuid.uuid4().hex[:8].upper()}",
+        beneficiary_id=beneficiary_id,
+        field_worker_id=None,
+        severity="critical" if risk_tier == "HIGH" else "medium",
+        type="critical_risk" if risk_tier == "HIGH" else "high_risk",
+        status="new",
+        description=(
+            f"Beneficiary {beneficiary_id} evaluated as {risk_tier} risk "
+            f"({risk_score:.2f}). Recommended action: {recommended_action}."
+        ),
+        location=region or "Unknown",
+        device_id=None,
+        alert_metadata={
+            "source": "evaluate",
+            "risk_score": risk_score,
+            "risk_tier": risk_tier,
+            "drivers": drivers,
+            "recommended_action": recommended_action,
+        },
+        created_at=created_at,
+        acknowledged_by=None,
+        acknowledged_at=None,
+        resolved_at=None,
+    )
+    db.add(alert)
+    await db.commit()
+    await db.refresh(alert)
+    return alert
+
+
+async def _fire_automation(*, alert: Alert, risk_score: float, risk_tier: str) -> None:
     """Fan out the automation rule to n8n (SMS) and Kafka (system.alerts)
     concurrently. Both are best-effort/non-raising — see their modules."""
     alert_payload = {
-        "alert_id": f"ALT-{uuid.uuid4().hex[:8].upper()}",
-        "beneficiary_id": beneficiary_id,
+        "alert_id": alert.alert_id,
+        "beneficiary_id": alert.beneficiary_id,
         "risk_score": risk_score,
         "risk_tier": risk_tier,
-        "region": region,
-        "triggered_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "source": "evaluate/n8n",
+        "region": alert.location,
+        "triggered_at": alert.created_at.isoformat().replace("+00:00", "Z"),
+        "source": "evaluate",
     }
     await asyncio.gather(
         trigger_n8n_webhook(alert_payload),
@@ -187,11 +230,19 @@ async def evaluate_beneficiary(
     request.state.automation_triggered = response.automation_triggered
 
     if response.automation_triggered:
-        await _fire_automation(
+        alert = await _persist_alert_record(
+            db,
             beneficiary_id=response.beneficiary_id,
             risk_score=response.risk_score,
             risk_tier=response.risk_tier,
             region=str(enriched.get("region") or payload.region),
+            drivers=response.drivers,
+            recommended_action=response.recommended_action,
+        )
+        await _fire_automation(
+            alert=alert,
+            risk_score=response.risk_score,
+            risk_tier=response.risk_tier,
         )
 
     return response
