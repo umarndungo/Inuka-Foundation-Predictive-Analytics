@@ -1,6 +1,8 @@
-# Inuka Risk Radar — shared data fabric (Data Eng + Backend)
-# Services: Redpanda (Kafka API) + PostgreSQL
+# Inuka Risk Radar — shared data fabric + demo API stack
+# Services: Redpanda (Kafka API) + PostgreSQL + FastAPI + Bronze consumer + n8n
 # Coordinate changes with Backend Engineer before merging.
+#
+# Quick start: ./scripts/demo_up.sh
 
 services:
   redpanda:
@@ -13,7 +15,7 @@ services:
       - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
       - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
       - --advertise-pandaproxy-addr internal://redpanda:8082,external://localhost:18082
-      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --schema-registry-addr internal://0.0.0.0:8081,external://localhost:18081
       - --rpc-addr redpanda:33145
       - --advertise-rpc-addr redpanda:33145
       - --mode dev-container
@@ -73,6 +75,88 @@ services:
       retries: 10
       start_period: 10s
 
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: inuka-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+asyncpg://inuka:inuka@postgres:5432/inuka_risk_radar
+      DATABASE_URL_SYNC: postgresql://inuka:inuka@postgres:5432/inuka_risk_radar
+      KAFKA_BOOTSTRAP: redpanda:9092
+      KAFKA_TOPIC_ALERTS: system.alerts
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/inuka-risk-alert
+      CORS_ORIGINS: '["http://localhost:3000"]'
+      AUTOMATION_THRESHOLD: "0.75"
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist trained model + seed JSON across rebuilds
+      - ./backend/app/ml:/workspace/backend/app/ml
+      - ./data-pipeline:/workspace/data-pipeline
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+    restart: unless-stopped
+
+  bronze-consumer:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: inuka-bronze-consumer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://inuka:inuka@postgres:5432/inuka_risk_radar
+      DATABASE_URL_SYNC: postgresql://inuka:inuka@postgres:5432/inuka_risk_radar
+      KAFKA_BOOTSTRAP: redpanda:9092
+      KAFKA_GROUP_ID: inuka-bronze-writer
+    command: ["python", "-m", "app.services.kafka_consumer"]
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:1.64.3
+    container_name: inuka-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      # Optional Twilio (workflow reads these after you import + activate it)
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      FIELD_WORKER_PHONE_NUMBER: ${FIELD_WORKER_PHONE_NUMBER:-}
+      GENERIC_TIMEZONE: Africa/Nairobi
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./backend/n8n/workflows:/workflows:ro
+    restart: unless-stopped
+
 volumes:
   redpanda-data:
   postgres-data:
+  n8n-data:
