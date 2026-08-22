@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,10 +15,10 @@ import type { Alert } from "@/types";
 import { formatRelativeTime, formatDateTime } from "@/lib/utils";
 
 const SEVERITY_CONFIG = {
-  critical: { icon: AlertTriangle, color: "bg-destructive/10 text-destructive border-destructive/20", label: "Critical" },
-  high: { icon: AlertCircle, color: "bg-[var(--risk-high)]/10 text-[var(--risk-high)] border-[var(--risk-high)]/20", label: "High" },
-  medium: { icon: Info, color: "bg-[var(--risk-medium)]/10 text-[var(--risk-medium)] border-[var(--risk-medium)]/20", label: "Medium" },
-  low: { icon: Database, color: "bg-muted/50 text-muted-foreground border-muted/50", label: "Low" },
+  critical: { icon: AlertTriangle, color: "bg-red-600/15 text-red-700 dark:text-red-400 border-red-600/30", label: "Critical" },
+  high: { icon: AlertCircle, color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", label: "High" },
+  medium: { icon: Info, color: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700", label: "Medium" },
+  low: { icon: Database, color: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800", label: "Low" },
 };
 
 const TYPE_ICONS = {
@@ -57,12 +58,9 @@ export function AlertsFeed({ alerts, className, onAcknowledge, onResolve, compac
       <Card className={cn(className)}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Recent Alerts</CardTitle>
+            <CardTitle className="text-base font-semibold">Recent Alerts</CardTitle>
             {newAlertsCount > 0 && (
-              <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                {newAlertsCount} new
-              </Badge>
+              <StatusBadge status="critical" label={`${newAlertsCount} new`} showDot size="sm" />
             )}
           </div>
         </CardHeader>
@@ -73,7 +71,7 @@ export function AlertsFeed({ alerts, className, onAcknowledge, onResolve, compac
                 <CompactAlertItem key={alert.id} alert={alert} onAcknowledge={onAcknowledge} onResolve={onResolve} />
               ))}
               {filteredAlerts.length === 0 && (
-                <div className="p-4 text-center text-muted-foreground text-sm">No alerts</div>
+                <div className="p-4 text-center text-muted-foreground text-xs">No alerts</div>
               )}
             </div>
           </ScrollArea>
@@ -83,22 +81,16 @@ export function AlertsFeed({ alerts, className, onAcknowledge, onResolve, compac
   }
 
   return (
-    <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader className="pb-3">
+    <Card className={cn("h-full flex flex-col border border-border shadow-xs bg-card", className)}>
+      <CardHeader className="pb-4 border-b border-border bg-muted/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
-            <CardTitle className="text-base">Alerts</CardTitle>
+            <CardTitle className="text-base font-bold">Alerts</CardTitle>
             {newAlertsCount > 0 && (
-              <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                {newAlertsCount} new
-              </Badge>
+              <StatusBadge status="high" label={`${newAlertsCount} new`} showDot size="sm" />
             )}
             {criticalCount > 0 && (
-              <Badge variant="destructive" className="gap-1 bg-destructive/10 text-destructive border-destructive/20">
-                <AlertTriangle className="w-3 h-3" />
-                {criticalCount} critical
-              </Badge>
+              <StatusBadge status="critical" label={`${criticalCount} critical`} showDot size="sm" />
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
