@@ -17,11 +17,14 @@ Read this alongside the five individual task breakdown docs — this file is the
                                                                      [PostgreSQL: Silver — Identity Graph]
                                                                                     |
                                                                                     v
-                                                                     [PostgreSQL: Gold — Aggregates]
+                                                                     [PostgreSQL: Gold — Aggregates + Artifacts]
                                                                              |            |
                                                                              v            v
-                                                              [ML: predict.py]   [Demand forecast]
+                                                              [ML: predict.py]   [Demand forecast materializer]
                                                                 (Data Sci)          (Data Sci)
+                                                                             |            |
+                                                                             v            v
+                                                   [gold.risk_trend_daily]  [gold.demand_forecasts]
                                                                              |            |
                                                                              v            v
                                                           [FastAPI: /api/v1/evaluate]  [/api/v1/demand]
@@ -50,7 +53,7 @@ Everything that can go wrong in a 72-hour sprint goes wrong at a seam between tw
 **What crosses this seam:** Clean Silver/Gold PostgreSQL tables with every field the model needs.
 
 - The model's feature list (from EDA on Day 1) must match column names available in Silver/Gold — including `travel_distance_km`, which appears in the `/api/v1/evaluate` API contract but is **not** in the seed generator's synthetic fields. Data Engineer must add it to `seed_generator.py` and the Bronze/Silver schema before Data Scientist trains on it, or Data Scientist must train without it and drop it from the API contract — **this must be resolved explicitly on Day 1**, not discovered on Day 2.
-- Gold-layer aggregation granularity (by region, by time window) must match what the demand-forecasting pipeline expects as input.
+- Gold-layer aggregation granularity (by region, by time window) must match what the demand-forecasting pipeline expects as input, and the resulting forecast output should be materialized into a persisted artifact table rather than recalculated ad hoc by the API.
 - **Failure mode to watch for:** Data Scientist trains against a local copy of `synthetic_beneficiaries.json` that silently drifts from what's actually landing in Postgres. Resolve by Day 2: Data Scientist reads from the real Silver/Gold tables, not the flat file, once they exist.
 
 ### Seam 2 — Data Scientist ↔ Backend Engineer
@@ -150,8 +153,8 @@ This is the cross-role version of the individual Day 1/2/3 plans — what must b
 
 ### End of Day 2 — "Everything talks to everything"
 - [ ] Silver identity graph joins Bronze events to demographics (Data Eng).
-- [ ] Real `predict.py` wired into `/api/v1/evaluate`; demand forecast pipeline built (Data Sci).
-- [ ] n8n + Twilio live; SSE and `/api/v1/demand` routes working against real data (Backend).
+- [ ] Real `predict.py` wired into `/api/v1/evaluate`; demand forecast pipeline built and materialized into `gold.demand_forecasts` (Data Sci).
+- [ ] n8n + Twilio live; SSE, `/api/v1/demand`, and `/api/v1/risk/trend` routes working against persisted Gold artifacts (Backend).
 - [ ] Dashboard pulling live data — RealtimeMetrics, DemandChart, DemandMap, Risk Radar all rendering real values, not mocks (Frontend).
 - [ ] UAT scripts written; first user walk-through completed and logged (PM).
 - [ ] **Explicit checkpoint:** run one full request through the entire system live — field event → Kafka → Postgres → model score → API response → dashboard update → (if HIGH risk) SMS sent. If this chain doesn't work end-to-end by end of Day 2, Day 3 has no slack left to fix it.

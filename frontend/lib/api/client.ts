@@ -23,22 +23,6 @@ import { getAlerts, acknowledgeAlert, resolveAlert } from "./alerts";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
-async function safeJsonFetch<T>(url: string, errorMessage: string, mockLoader: () => Promise<T>): Promise<T> {
-  if (USE_MOCK) {
-    return mockLoader();
-  }
-
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error(`${errorMessage}: HTTP ${res.status}`);
-    }
-    return res.json();
-  } catch {
-    return mockLoader();
-  }
-}
-
 export const api = {
   getBeneficiaries: (filters?: Partial<FilterState>): Promise<PaginatedResponse<Beneficiary>> =>
     getBeneficiaries(filters),
@@ -65,7 +49,7 @@ export const api = {
   getDemandForecast: (region?: string, days = 7): Promise<DemandForecast> =>
     getDemandForecast(region, days),
 
-  getRegionalDemandBreakdown: () => getRegionalDemandBreakdown(),
+  getRegionalDemandBreakdown: (days = 30) => getRegionalDemandBreakdown(days),
 
   getAlerts: (filters?: { severity?: string; status?: string; region?: string; limit?: number }): Promise<Alert[]> =>
     getAlerts(filters),
@@ -75,31 +59,55 @@ export const api = {
   resolveAlert: (id: string): Promise<Alert> => resolveAlert(id),
 
   getKPIMetrics: async (): Promise<KPIMetric[]> => {
-    return safeJsonFetch(`${API_BASE}/api/v1/metrics/kpi`, "Failed to fetch KPI metrics", async () => {
+    if (USE_MOCK) {
       const { mockKPIMetrics } = await import("@/lib/mock/data");
       return mockKPIMetrics;
-    });
+    }
+
+    const res = await fetch(`${API_BASE}/api/v1/metrics/kpi`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch KPI metrics: HTTP ${res.status}`);
+    }
+    return res.json();
   },
 
   getSystemStatus: async (): Promise<SystemStatus> => {
-    return safeJsonFetch(`${API_BASE}/api/v1/system/status`, "Failed to fetch system status", async () => {
+    if (USE_MOCK) {
       const { mockSystemStatus } = await import("@/lib/mock/data");
       return mockSystemStatus;
-    });
+    }
+
+    const res = await fetch(`${API_BASE}/api/v1/system/status`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch system status: HTTP ${res.status}`);
+    }
+    return res.json();
   },
 
   getMapRegions: async (): Promise<MapRegion[]> => {
-    return safeJsonFetch(`${API_BASE}/api/v1/map/regions`, "Failed to fetch map regions", async () => {
+    if (USE_MOCK) {
       const { mockMapRegions } = await import("@/lib/mock/data");
       return mockMapRegions;
-    });
+    }
+
+    const res = await fetch(`${API_BASE}/api/v1/map/regions`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch map regions: HTTP ${res.status}`);
+    }
+    return res.json();
   },
 
   getFieldWorkers: async (): Promise<FieldWorker[]> => {
-    return safeJsonFetch(`${API_BASE}/api/v1/field-workers`, "Failed to fetch field workers", async () => {
+    if (USE_MOCK) {
       const { mockFieldWorkers } = await import("@/lib/mock/data");
       return mockFieldWorkers;
-    });
+    }
+
+    const res = await fetch(`${API_BASE}/api/v1/field-workers`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch field workers: HTTP ${res.status}`);
+    }
+    return res.json();
   },
 
   syncOfflineData: async (payload: unknown): Promise<{ synced: number; failed: number }> => {

@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # Bring up Inuka Risk Radar for a live demo:
 #   Redpanda + Postgres + FastAPI + Bronze consumer + n8n + Next.js frontend
-# then seed demographics, train model (if missing), and publish a telemetry batch.
+# then bootstrap synthetic demo data, materialize analytics artifacts, optionally
+# train the model, and publish a telemetry batch.
 #
 # Usage:
-#   ./scripts/demo_up.sh              # full bring-up + seed + train + sample produce
-#   ./scripts/demo_up.sh --no-train   # skip model training (stub scoring OK)
-#   ./scripts/demo_up.sh --no-seed    # skip seed / demographics / produce
-#   ./scripts/demo_up.sh --produce    # only publish another telemetry batch
-#   ./scripts/demo_up.sh --down       # stop and remove containers
-#   ./scripts/demo_up.sh --logs       # follow backend + consumer logs
+#   ./scripts/demo_up.sh                    # full bring-up + bootstrap + train + sample produce
+#   ./scripts/demo_up.sh --bootstrap-demo   # rerun full demo data bootstrap against a running stack
+#   ./scripts/demo_up.sh --no-train         # skip model training (stub scoring OK)
+#   ./scripts/demo_up.sh --no-seed          # skip seed / bootstrap / produce
+#   ./scripts/demo_up.sh --produce          # only publish another telemetry batch
+#   ./scripts/demo_up.sh --down             # stop and remove containers
+#   ./scripts/demo_up.sh --logs             # follow backend + consumer logs
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -34,6 +36,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-seed) DO_SEED=0 ;;
     --no-train) DO_TRAIN=0 ;;
+    --bootstrap-demo) MODE="bootstrap-demo" ;;
     --produce) MODE="produce" ;;
     --down) MODE="down" ;;
     --logs) MODE="logs" ;;
@@ -108,13 +111,56 @@ exec_backend() {
 produce_batch() {
   local count="${1:-50}"
   local rate="${2:-10}"
-  echo "Publishing $count telemetry events @ ~${rate}/s…"
+  echo "Publishing $count telemetry events @ ~${rate}/s using original synthetic timestamps…"
   exec_backend python /workspace/data-pipeline/scripts/kafka_producer_sim.py \
     --bootstrap "$KAFKA_INTERNAL" \
     --count "$count" \
-    --rate "$rate"
+    --rate "$rate" \
+    --no-refresh-ts
   echo "Giving Bronze consumer a few seconds to land…"
   sleep 5
+}
+
+bootstrap_demo_data() {
+  echo "Generating synthetic seed…"
+  exec_backend python /workspace/data-pipeline/scripts/seed_generator.py
+
+  echo "Loading Silver demographics…"
+  exec_backend python /workspace/data-pipeline/scripts/load_demographics.py --dsn "$SYNC_DSN"
+
+  echo "Loading Silver reference/master entities…"
+  exec_backend python /workspace/data-pipeline/scripts/load_reference_entities.py --dsn "$SYNC_DSN"
+
+  echo "Materializing demand forecast artifacts (7d)…"
+  exec_backend python /workspace/data-pipeline/scripts/materialize_demand_forecasts.py --dsn "$SYNC_DSN" --days 7
+
+  echo "Materializing demand forecast artifacts (30d)…"
+  exec_backend python /workspace/data-pipeline/scripts/materialize_demand_forecasts.py --dsn "$SYNC_DSN" --days 30
+
+  produce_batch 50 10
+
+  echo "Seeding one live evaluation snapshot…"
+  curl -sf "http://localhost:8000/api/v1/evaluate" \
+    -H "Content-Type: application/json" \
+    -d '{"beneficiary_id":"BEN-1000","attendance_rate":0.52,"assignment_completion":0.41,"travel_distance_km":18.2,"region":"Kisumu"}' \
+    >/dev/null || echo "(evaluate bootstrap failed — check backend logs / identity graph)"
+
+  echo "Backfilling historical risk scores for demo trend depth…"
+  exec_backend python /workspace/data-pipeline/scripts/backfill_risk_scores.py --dsn "$SYNC_DSN" --days 30 --limit 250 --replace
+
+  echo "Layer checks:"
+  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
+    "SELECT count(*) AS bronze_events FROM bronze.telemetry_events;"
+  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
+    "SELECT count(*) AS demographics FROM silver.beneficiary_demographics;"
+  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
+    "SELECT count(*) AS reference_beneficiaries FROM silver.beneficiaries_master;"
+  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
+    "SELECT count(*) AS demand_forecasts FROM gold.demand_forecasts;"
+  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
+    "SELECT count(*) AS risk_scores FROM gold.beneficiary_risk_scores;"
+  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
+    "SELECT count(*) AS risk_trend_days FROM gold.risk_trend_daily;"
 }
 
 print_summary() {
@@ -172,6 +218,16 @@ case "$MODE" in
     echo "Done."
     exit 0
     ;;
+  bootstrap-demo)
+    need docker
+    need curl
+    wait_compose_healthy postgres
+    wait_compose_healthy redpanda
+    wait_http "http://localhost:8000/health" "backend"
+    bootstrap_demo_data
+    echo "Demo bootstrap complete."
+    exit 0
+    ;;
 esac
 
 need docker
@@ -192,19 +248,7 @@ wait_http "http://localhost:8000/health" "backend"
 wait_http "http://localhost:3000" "frontend"
 
 if [[ "$DO_SEED" -eq 1 ]]; then
-  echo "Generating synthetic seed…"
-  exec_backend python /workspace/data-pipeline/scripts/seed_generator.py
-
-  echo "Loading Silver demographics…"
-  exec_backend python /workspace/data-pipeline/scripts/load_demographics.py --dsn "$SYNC_DSN"
-
-  produce_batch 50 10
-
-  echo "Layer checks:"
-  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
-    "SELECT count(*) AS bronze_events FROM bronze.telemetry_events;"
-  docker exec inuka-postgres psql -U inuka -d inuka_risk_radar -c \
-    "SELECT count(*) AS demographics FROM silver.beneficiary_demographics;"
+  bootstrap_demo_data
 fi
 
 if [[ "$DO_TRAIN" -eq 1 ]]; then

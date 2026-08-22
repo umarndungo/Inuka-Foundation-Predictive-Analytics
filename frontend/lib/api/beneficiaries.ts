@@ -64,32 +64,20 @@ export async function getBeneficiaries(filters?: Partial<FilterState>): Promise<
     });
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/beneficiaries?${params.toString()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch beneficiaries");
-    return res.json();
-  } catch {
-    return getMockBeneficiaries(filters);
-  }
+  const res = await fetch(`${API_BASE}/api/v1/beneficiaries?${params.toString()}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch beneficiaries");
+  return res.json();
 }
 
 export async function getBeneficiary(id: string): Promise<Beneficiary> {
-  const getMock = async () => {
+  if (USE_MOCK) {
     const { mockBeneficiaries } = await import("@/lib/mock/data");
     const beneficiary = mockBeneficiaries.find((b) => b.id === id || b.code === id);
     if (!beneficiary) throw new Error("Beneficiary not found");
     return beneficiary;
-  };
-
-  if (USE_MOCK) {
-    return getMock();
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/beneficiaries/${id}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch beneficiary detail");
-    return res.json();
-  } catch {
-    return getMock();
-  }
+  const res = await fetch(`${API_BASE}/api/v1/beneficiaries/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch beneficiary detail");
+  return res.json();
 }

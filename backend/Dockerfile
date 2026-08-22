@@ -10,8 +10,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt /workspace/backend/requirements.txt
-# kafka-python powers the Bronze consumer + demo producer scripts
-RUN pip install --no-cache-dir -r /workspace/backend/requirements.txt "kafka-python>=2.0.2,<4"
+RUN pip install --no-cache-dir -r /workspace/backend/requirements.txt
 
 COPY backend/ /workspace/backend/
 COPY data-pipeline/ /workspace/data-pipeline/

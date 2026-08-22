@@ -7,7 +7,8 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.models.metrics import RegionalRiskStats
+from app.models.metrics import BeneficiaryRiskScore, RegionalRiskStats, RiskTrendDaily
+from app.models.reference import FieldWorker
 from app.schemas.dashboard import (
     FieldWorkerResponse,
     KPIMetricResponse,
@@ -27,13 +28,7 @@ _REGION_COORDS: dict[str, tuple[float, float]] = {
     "Eldoret": (0.514277, 35.269779),
 }
 
-_FIELD_WORKER_NAMES: dict[str, list[str]] = {
-    "Nairobi": ["James Ochieng", "Grace Wanjiku"],
-    "Kisumu": ["Peter Otieno", "Mary Atieno", "David Omondi"],
-    "Nakuru": ["Ruth Cherono", "Brian Kiptoo"],
-    "Mombasa": ["Fatma Ali", "Asha Salim"],
-    "Eldoret": ["Mercy Jepchirchir", "Daniel Kimutai"],
-}
+
 
 
 def _slug(region: str) -> str:
@@ -49,6 +44,19 @@ def _region_code(region: str) -> str:
 
 @router.get("/risk/distribution", response_model=RiskDistributionResponse)
 async def get_risk_distribution(db: AsyncSession = Depends(get_db)) -> RiskDistributionResponse:
+    score_result = await db.execute(select(BeneficiaryRiskScore))
+    scores = score_result.scalars().all()
+    if scores:
+        latest: dict[str, BeneficiaryRiskScore] = {}
+        for score in sorted(scores, key=lambda s: (s.beneficiary_id, s.scored_at), reverse=True):
+            latest.setdefault(score.beneficiary_id, score)
+        low = sum(1 for s in latest.values() if s.risk_tier == "LOW")
+        medium = sum(1 for s in latest.values() if s.risk_tier == "MEDIUM")
+        high_only = sum(1 for s in latest.values() if s.risk_tier == "HIGH" and float(s.risk_score) < 0.85)
+        critical = sum(1 for s in latest.values() if s.risk_tier == "HIGH" and float(s.risk_score) >= 0.85)
+        total = low + medium + high_only + critical
+        return RiskDistributionResponse(low=low, medium=medium, high=high_only, critical=critical, total=total)
+
     result = await db.execute(select(RegionalRiskStats))
     rows = result.scalars().all()
     low = sum(int(r.low_risk_count or 0) for r in rows)
@@ -182,70 +190,91 @@ async def get_system_status(db: AsyncSession = Depends(get_db)) -> SystemStatusR
 
 @router.get("/field-workers", response_model=list[FieldWorkerResponse])
 async def get_field_workers(db: AsyncSession = Depends(get_db)) -> list[FieldWorkerResponse]:
-    result = await db.execute(select(RegionalRiskStats))
-    rows = result.scalars().all()
+    worker_result = await db.execute(select(FieldWorker).where(FieldWorker.active.is_(True)))
+    workers = worker_result.scalars().all()
+    stats_result = await db.execute(select(RegionalRiskStats))
+    stats_by_region = {row.region: row for row in stats_result.scalars().all()}
     now = datetime.now(timezone.utc)
-    workers: list[FieldWorkerResponse] = []
 
-    worker_index = 1
-    for row in rows:
-        region = row.region
-        names = _FIELD_WORKER_NAMES.get(region, [f"{region} Field Worker"])
-        assigned_total = int(row.beneficiary_count or 0)
-        per_worker = max(1, assigned_total // max(1, len(names)))
-        last_sync = row.last_ingested_at.isoformat() if row.last_ingested_at else now.isoformat()
-        is_online = bool(row.last_ingested_at and row.last_ingested_at >= now - timedelta(minutes=10))
+    region_counts: dict[str, int] = {}
+    for worker in workers:
+        region_counts[worker.region] = region_counts.get(worker.region, 0) + 1
 
-        for idx, name in enumerate(names):
-            workers.append(
-                FieldWorkerResponse(
-                    id=f"fw-{worker_index:03d}",
-                    code=f"FW-{worker_index:03d}",
-                    name=name,
-                    region=region,
-                    phoneNumber="+254 7XX XXX XXX",
-                    assignedBeneficiaries=per_worker if idx < len(names) - 1 else max(1, assigned_total - per_worker * (len(names) - 1)),
-                    lastSync=last_sync,
-                    isOnline=is_online if idx == 0 else (is_online and idx % 2 == 0),
-                )
+    responses: list[FieldWorkerResponse] = []
+    for worker in workers:
+        stat = stats_by_region.get(worker.region)
+        assigned_total = int(stat.beneficiary_count or 0) if stat else 0
+        worker_count = max(1, region_counts.get(worker.region, 1))
+        per_worker = max(1, assigned_total // worker_count) if assigned_total else 1
+        last_sync = stat.last_ingested_at.isoformat() if stat and stat.last_ingested_at else now.isoformat()
+        is_online = bool(stat and stat.last_ingested_at and stat.last_ingested_at >= now - timedelta(minutes=10))
+        responses.append(
+            FieldWorkerResponse(
+                id=worker.field_worker_id,
+                code=worker.code,
+                name=worker.full_name,
+                region=worker.region,
+                phoneNumber=worker.phone_number or "+254 7XX XXX XXX",
+                assignedBeneficiaries=per_worker,
+                lastSync=last_sync,
+                isOnline=is_online,
             )
-            worker_index += 1
+        )
 
-    return workers
+    return responses
 
 
 @router.get("/risk/trend", response_model=list[RiskTrendPointResponse])
 async def get_risk_trend(period: str = "7d", db: AsyncSession = Depends(get_db)) -> list[RiskTrendPointResponse]:
     points = 1 if period == "24h" else 7 if period == "7d" else 30
-    result = await db.execute(select(RegionalRiskStats))
-    rows = result.scalars().all()
 
-    base_low = sum(int(r.low_risk_count or 0) for r in rows)
-    base_medium = sum(int(r.medium_risk_count or 0) for r in rows)
-    base_high = sum(int(r.high_risk_count or 0) for r in rows)
-    total = max(1, base_low + base_medium + base_high)
-    base_critical = max(0, int(round(base_high * 0.15)))
-
-    now = datetime.now(timezone.utc)
-    trend: list[RiskTrendPointResponse] = []
-    for i in range(points):
-        day_offset = points - i - 1
-        ts = now - timedelta(hours=day_offset) if period == "24h" else now - timedelta(days=day_offset)
-        drift = i - max(0, points // 2)
-        critical = max(0, base_critical + drift)
-        high = max(0, base_high + drift * 2)
-        medium = max(0, base_medium - drift)
-        low = max(0, total - high - medium)
-        overall = round((high + critical) / max(1, low + medium + high + critical), 2)
-        trend.append(
+    snapshot_result = await db.execute(
+        select(RiskTrendDaily).order_by(RiskTrendDaily.snapshot_date.desc()).limit(points)
+    )
+    snapshots = list(reversed(snapshot_result.scalars().all()))
+    if snapshots:
+        return [
             RiskTrendPointResponse(
-                date=ts.date().isoformat(),
-                overall=overall,
-                highRisk=high,
-                critical=critical,
-                low=low,
-                medium=medium,
+                date=snapshot.snapshot_date.isoformat(),
+                overall=round(float(snapshot.overall_ratio), 2),
+                highRisk=int(snapshot.high_count),
+                critical=int(snapshot.critical_count),
+                low=int(snapshot.low_count),
+                medium=int(snapshot.medium_count),
             )
-        )
+            for snapshot in snapshots
+        ]
 
-    return trend
+    score_result = await db.execute(select(BeneficiaryRiskScore).order_by(BeneficiaryRiskScore.scored_at.desc()))
+    scores = score_result.scalars().all()
+
+    if scores:
+        buckets: dict[str, dict[str, BeneficiaryRiskScore]] = {}
+        for score in scores:
+            day_key = score.scored_at.date().isoformat()
+            day_bucket = buckets.setdefault(day_key, {})
+            if score.beneficiary_id not in day_bucket:
+                day_bucket[score.beneficiary_id] = score
+        days = sorted(buckets.keys())[-points:]
+        trend: list[RiskTrendPointResponse] = []
+        for day in days:
+            day_scores = list(buckets[day].values())
+            low = sum(1 for s in day_scores if s.risk_tier == "LOW")
+            medium = sum(1 for s in day_scores if s.risk_tier == "MEDIUM")
+            high_only = sum(1 for s in day_scores if s.risk_tier == "HIGH" and float(s.risk_score) < 0.85)
+            critical = sum(1 for s in day_scores if s.risk_tier == "HIGH" and float(s.risk_score) >= 0.85)
+            total = max(1, low + medium + high_only + critical)
+            overall = round((high_only + critical) / total, 2)
+            trend.append(
+                RiskTrendPointResponse(
+                    date=day,
+                    overall=overall,
+                    highRisk=high_only,
+                    critical=critical,
+                    low=low,
+                    medium=medium,
+                )
+            )
+        return trend
+
+    return []

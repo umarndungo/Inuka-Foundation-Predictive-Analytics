@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { RiskDistributionChart } from "@/components/dashboard/RiskDistributionChart";
-import { HighRiskBeneficiaries } from "@/components/dashboard/HighRiskBeneficiaries";
+import { BeneficiariesTable } from "@/components/dashboard/BeneficiariesTable";
 import { DemandForecastChart } from "@/components/dashboard/DemandForecastChart";
 import { RiskEvaluatorCard } from "@/components/dashboard/RiskEvaluatorCard";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -18,12 +18,37 @@ export default async function DashboardPage() {
     riskDistribution,
     beneficiariesRes,
     demandForecast,
+    regionalBreakdown,
   ] = await Promise.all([
     api.getKPIMetrics(),
     api.getRiskDistribution(),
-    api.getBeneficiaries({ pageSize: 10, riskTier: "high" }),
-    api.getDemandForecast("National"),
+    api.getBeneficiaries({ pageSize: 200 }),
+    api.getDemandForecast("National", 30),
+    api.getRegionalDemandBreakdown(30),
   ]);
+
+  const highRiskBeneficiaries = beneficiariesRes.items.filter(
+    (beneficiary) => beneficiary.riskTier === "high" || beneficiary.riskTier === "critical"
+  );
+
+  const totalBeneficiaries = riskDistribution.total;
+  const highAndCritical = riskDistribution.high + riskDistribution.critical;
+  const flaggedShare = totalBeneficiaries > 0 ? (highAndCritical / totalBeneficiaries) * 100 : 0;
+  const topRegionalSurge = [...regionalBreakdown].sort((a, b) => b.summary.expectedChange - a.summary.expectedChange)[0];
+  const peakRegionLabel = topRegionalSurge
+    ? `${topRegionalSurge.region} (${topRegionalSurge.summary.expectedChange >= 0 ? "+" : ""}${topRegionalSurge.summary.expectedChange.toFixed(1)}%)`
+    : "No regional forecast data";
+  const modelConfidence = demandForecast.summary.confidence;
+  const primaryRiskDriver = (() => {
+    const driverCounts = highRiskBeneficiaries.reduce<Record<string, number>>((acc, beneficiary) => {
+      const driver = beneficiary.riskDrivers[0] || "No dominant driver";
+      acc[driver] = (acc[driver] || 0) + 1;
+      return acc;
+    }, {});
+
+    const topDriver = Object.entries(driverCounts).sort((a, b) => b[1] - a[1])[0];
+    return topDriver?.[0] || "No dominant driver";
+  })();
 
   return (
     <DashboardLayout>
@@ -71,10 +96,10 @@ export default async function DashboardPage() {
                   <span className="flex items-center gap-1.5 text-primary font-semibold">
                     <ShieldAlert className="w-4 h-4" /> High & Critical Flagged
                   </span>
-                  <StatusBadge status="critical" label="21.9%" size="sm" />
+                  <StatusBadge status={flaggedShare > 0 ? "critical" : "normal"} label={`${flaggedShare.toFixed(1)}%`} size="sm" />
                 </div>
                 <div className="text-3xl font-extrabold font-sans text-foreground tracking-tight pt-1 tabular-nums">
-                  2,080 <span className="text-xs font-normal text-muted-foreground font-sans">Beneficiaries</span>
+                  {highAndCritical.toLocaleString()} <span className="text-xs font-normal text-muted-foreground font-sans">of {totalBeneficiaries.toLocaleString()} Beneficiaries</span>
                 </div>
               </div>
 
@@ -85,18 +110,18 @@ export default async function DashboardPage() {
               <div className="space-y-3 pt-3.5 border-t border-border/40 text-muted-foreground font-mono">
                 <div className="flex justify-between items-center text-xs">
                   <span>Primary Risk Driver:</span>
-                  <span className="font-medium text-foreground">Engagement Dip</span>
+                  <span className="font-medium text-foreground">{primaryRiskDriver}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Peak Region Surge:</span>
                   <span className="font-medium text-primary flex items-center gap-1">
-                    <TrendingUp className="w-3.5 h-3.5" /> Nairobi (+22.5%)
+                    <TrendingUp className="w-3.5 h-3.5" /> {peakRegionLabel}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Model Confidence:</span>
                   <span className="font-medium text-foreground flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" /> 91.4%
+                    <Sparkles className="w-3.5 h-3.5 text-primary" /> {modelConfidence}%
                   </span>
                 </div>
               </div>
@@ -105,7 +130,15 @@ export default async function DashboardPage() {
         </div>
 
         {/* Actionable High Risk Beneficiaries Directory */}
-        <HighRiskBeneficiaries beneficiaries={beneficiariesRes.items} />
+        <BeneficiariesTable
+          beneficiaries={highRiskBeneficiaries}
+          title="High-Risk Beneficiary Directory"
+          description="High- and critical-risk beneficiary cases derived from persisted scoring outputs and ready for intervention review."
+          defaultRiskFilter="all"
+          exportFilePrefix="high_risk_beneficiaries"
+          modalDescription="Detailed high-risk beneficiary profile and recommended intervention guide."
+          recommendedActionLabel="Intervention Action"
+        />
       </div>
     </DashboardLayout>
   );

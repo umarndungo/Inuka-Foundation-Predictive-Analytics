@@ -8,7 +8,7 @@ import { SidebarNav } from "./SidebarNav";
 import { useAppStore } from "@/lib/store";
 import { ChevronLeft, ChevronRight, Shield } from "lucide-react";
 
-export function Sidebar() {
+export function Sidebar({ activeAlertsCount = 0 }: { activeAlertsCount?: number }) {
   const { sidebarOpen, toggleSidebar } = useAppStore();
   const collapsed = !sidebarOpen;
 
@@ -49,7 +49,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation List */}
-        <SidebarNav collapsed={collapsed} />
+        <SidebarNav collapsed={collapsed} activeAlertsCount={activeAlertsCount} />
       </SidebarComponent>
     </aside>
   );

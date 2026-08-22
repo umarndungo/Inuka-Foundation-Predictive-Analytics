@@ -27,6 +27,36 @@ from pathlib import Path
 DEFAULT_SEED = 42
 REGIONS = ("Nairobi", "Kisumu", "Nakuru", "Mombasa", "Eldoret")
 PILLARS = ("Scholarship", "Plus", "Vocational", "Tech")
+SUBCOUNTIES = {
+    "Nairobi": ("Kasarani", "Embakasi", "Westlands"),
+    "Kisumu": ("Kisumu East", "Nyando", "Muhoroni"),
+    "Nakuru": ("Nakuru West", "Gilgil", "Molo"),
+    "Mombasa": ("Kisauni", "Changamwe", "Likoni"),
+    "Eldoret": ("Ainabkoi", "Kapsaret", "Turbo"),
+}
+SCHOOLS = {
+    "Nairobi": ("Kasarani Primary", "Embakasi Learning Centre", "Westlands Academy"),
+    "Kisumu": ("Kisumu Community School", "Nyando Mixed", "Muhoroni Primary"),
+    "Nakuru": ("Nakuru Hills Academy", "Gilgil Township", "Molo Academy"),
+    "Mombasa": ("Kisauni Primary", "Changamwe School", "Likoni Community Academy"),
+    "Eldoret": ("Ainabkoi Primary", "Kapsaret School", "Turbo Learning Centre"),
+}
+REGION_COORDS = {
+    "Nairobi": (-1.286389, 36.817223),
+    "Kisumu": (-0.091702, 34.767956),
+    "Nakuru": (-0.303099, 36.080025),
+    "Mombasa": (-4.043477, 39.668206),
+    "Eldoret": (0.514277, 35.269779),
+}
+FIELD_WORKERS = {
+    "Nairobi": (("fw-001", "FW-001", "James Ochieng"), ("fw-002", "FW-002", "Grace Wanjiku")),
+    "Kisumu": (("fw-003", "FW-003", "Peter Otieno"), ("fw-004", "FW-004", "Mary Atieno"), ("fw-005", "FW-005", "David Omondi")),
+    "Nakuru": (("fw-006", "FW-006", "Ruth Cherono"), ("fw-007", "FW-007", "Brian Kiptoo")),
+    "Mombasa": (("fw-008", "FW-008", "Fatma Ali"), ("fw-009", "FW-009", "Asha Salim")),
+    "Eldoret": (("fw-010", "FW-010", "Mercy Jepchirchir"), ("fw-011", "FW-011", "Daniel Kimutai")),
+}
+FIRST_NAMES = ("Achieng", "Kiprop", "Wanjiku", "Omondi", "Atieno", "Mutua", "Njeri", "Kamau", "Nafula", "Otieno")
+LAST_NAMES = ("Otieno", "Cheruiyot", "Mwangi", "Ochieng", "Adhiambo", "Kilonzo", "Wambui", "Gitau", "Rotich", "Onyango")
 
 # Deliberate demo skew: Kisumu shows elevated dropout-risk indicators.
 # This is a synthetic test scenario, not a real-world regional claim.
@@ -86,6 +116,9 @@ def _synthetic_dropout_outcome(
 def _generate_one(rng: random.Random, beneficiary_id: str, base_ts: datetime) -> dict:
     region = rng.choice(REGIONS)
     pillar = rng.choice(PILLARS)
+    sub_county = rng.choice(SUBCOUNTIES[region])
+    school_name = rng.choice(SCHOOLS[region])
+    full_name = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
 
     attendance_rate = rng.uniform(0.45, 0.98)
     grade_average = rng.uniform(45.0, 95.0)
@@ -136,12 +169,30 @@ def _generate_one(rng: random.Random, beneficiary_id: str, base_ts: datetime) ->
     )
 
     event_ts = base_ts - timedelta(minutes=rng.randint(0, 60 * 24 * 14))
+    grade = rng.randint(3, 8)
+    age = grade + rng.randint(5, 7)
+    gender = rng.choice(("M", "F"))
+    enrollment_date = (base_ts - timedelta(days=rng.randint(120, 900))).date().isoformat()
+    base_lat, base_lng = REGION_COORDS[region]
+    lat_offset = rng.uniform(-0.08, 0.08)
+    lng_offset = rng.uniform(-0.08, 0.08)
+    worker_id, worker_code, worker_name = rng.choice(FIELD_WORKERS[region])
 
     return {
         "beneficiary_id": beneficiary_id,
         "timestamp": event_ts.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "full_name": full_name,
         "region": region,
+        "sub_county": sub_county,
+        "school_name": school_name,
+        "grade": grade,
+        "age": age,
+        "gender": gender,
+        "phone_number": "+254 7XX XXX XXX",
         "pillar": pillar,
+        "enrollment_date": enrollment_date,
+        "home_lat": round(base_lat + lat_offset, 6),
+        "home_lng": round(base_lng + lng_offset, 6),
         "attendance_rate": round(attendance_rate, 4),
         "grade_average": round(grade_average, 2),
         "socioeconomic_index": round(socioeconomic_index, 2),
@@ -151,6 +202,16 @@ def _generate_one(rng: random.Random, beneficiary_id: str, base_ts: datetime) ->
         "travel_distance_km": round(travel_distance_km, 2),
         # Historical synthetic outcome for supervised ML (target), not a feature cut.
         "dropped_out": dropped_out,
+        "field_worker": {
+            "field_worker_id": worker_id,
+            "code": worker_code,
+            "full_name": worker_name,
+            "region": region,
+            "sub_county": sub_county,
+            "phone_number": "+254 7XX XXX XXX",
+            "home_base_lat": round(base_lat, 6),
+            "home_base_lng": round(base_lng, 6),
+        },
     }
 
 

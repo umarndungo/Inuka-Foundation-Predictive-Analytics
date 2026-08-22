@@ -7,26 +7,45 @@ import { SidebarNav } from "./SidebarNav";
 import { Header } from "./Header";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAppStore } from "@/lib/store";
-import { mockSystemStatus } from "@/lib/mock/data";
+import { api } from "@/lib/api";
 import { Shield } from "lucide-react";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { setSystemStatus } = useAppStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeAlertsCount, setActiveAlertsCount] = useState(0);
 
   useEffect(() => {
     // Force light theme
     document.documentElement.classList.remove("dark");
 
-    setSystemStatus({
-      ...mockSystemStatus,
-      lastSync: new Date().toISOString(),
-    });
+    let cancelled = false;
+
+    const loadLayoutData = async () => {
+      try {
+        const [status, alerts] = await Promise.all([
+          api.getSystemStatus(),
+          api.getAlerts({ limit: 200 }),
+        ]);
+        if (!cancelled) {
+          setSystemStatus(status);
+          setActiveAlertsCount(alerts.filter((alert) => alert.status !== "resolved").length);
+        }
+      } catch {
+        // Leave layout-level status/count unset on failure; downstream UI should treat missing values as unknown.
+      }
+    };
+
+    loadLayoutData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [setSystemStatus]);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar />
+      <Sidebar activeAlertsCount={activeAlertsCount} />
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-64 p-0 gap-0 border-r border-border bg-card">
@@ -45,7 +64,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             </Link>
           </div>
           <div className="flex flex-col h-[calc(100%-3.5rem)] overflow-y-auto">
-            <SidebarNav onNavigate={() => setMobileMenuOpen(false)} />
+            <SidebarNav onNavigate={() => setMobileMenuOpen(false)} activeAlertsCount={activeAlertsCount} />
           </div>
         </SheetContent>
       </Sheet>

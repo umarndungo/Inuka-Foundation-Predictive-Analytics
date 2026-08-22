@@ -127,7 +127,7 @@ See the [full monorepo layout](#) in the implementation spec for every file.
 # 1. Clone and enter the repo
 git clone https://github.com/umarndungo/Inuka-Foundation-Predictive-Analytics && cd Inuka-Risk-Radar
 
-# 2. Bring up the full stack
+# 2. Bring up the full stack and bootstrap demo data
 ./scripts/demo_up.sh
 ```
 
@@ -138,6 +138,18 @@ This starts:
 - `bronze-consumer` (Kafka -> Postgres)
 - `n8n` (workflow automation)
 - `frontend` (Next.js dashboard, configured to call `http://backend:8000` inside Docker)
+
+The pipeline now also supports Silver reference/master entities for frontend authenticity:
+- `silver.beneficiaries_master`
+- `silver.field_workers`
+- `silver.beneficiary_assignments`
+
+And an operations / analytics layer for persisted scoring, forecast, trend, and action state:
+- `gold.beneficiary_risk_scores`
+- `gold.demand_forecasts`
+- `gold.risk_trend_daily`
+- `operations.alerts`
+- `operations.interventions`
 
 Endpoints:
 - API docs: `http://localhost:8000/docs`
@@ -151,10 +163,20 @@ Endpoints:
 docker compose up -d --build
 ```
 
-To seed demo data, load demographics, and optionally train the model:
+To seed demo data, load demographics/reference data, materialize demand artifacts, publish telemetry, backfill multi-day risk trend history, and optionally train the model:
+
+> The bootstrap and training steps now run against the synthetic seed file mounted into the backend container at `/workspace/data-pipeline/data/synthetic_beneficiaries.json`.
+>
+> The demo bootstrap now publishes telemetry with `--no-refresh-ts` so Bronze/Silver telemetry remains timestamp-aligned with `synthetic_beneficiaries.json` by default.
 
 ```bash
 ./scripts/demo_up.sh
+```
+
+To rerun the demo bootstrap later against an already-running stack without recreating containers:
+
+```bash
+./scripts/demo_up.sh --bootstrap-demo
 ```
 
 ### Local development split mode
@@ -215,7 +237,7 @@ Server-Sent Events, ~2s cadence, streams the latest Kafka telemetry near-real-ti
 
 ### `GET /api/v1/demand`
 
-Regional demand forecast (Nairobi, Kisumu, Nakuru, Mombasa, Eldoret) for the Demand Map.
+Regional demand forecast (Nairobi, Kisumu, Nakuru, Mombasa, Eldoret) for the Demand Map, now backed by persisted `gold.demand_forecasts` artifacts when available.
 
 > ⚠️ **Known gap:** the base synthetic data generator does not currently produce `travel_distance_km` or `assignment_completion`, both required by `/evaluate`. This must be resolved on Day 1 — either extend `seed_generator.py`, or adjust the contract. See the [Integration Notes](#integration-notes).
 
@@ -227,7 +249,7 @@ Regional demand forecast (Nairobi, Kisumu, Nakuru, Mombasa, Eldoret) for the Dem
 2. A Kafka consumer writes raw events into **PostgreSQL Bronze**.
 3. Bronze is joined against static demographic data into **Silver** (the beneficiary identity graph).
 4. Silver is aggregated into **Gold** (regional stats consumed by ML and the dashboard).
-5. The XGBoost model (`predict.py`) scores beneficiaries on request via `/api/v1/evaluate`; a separate forecasting pipeline produces regional demand estimates via `/api/v1/demand`.
+5. The XGBoost model (`predict.py`) scores beneficiaries on request via `/api/v1/evaluate`; persisted score artifacts feed `gold.risk_trend_daily`, and a separate forecasting pipeline materializes regional demand estimates into `gold.demand_forecasts` for `/api/v1/demand`.
 6. High-risk scores (`> 0.75`) trigger an n8n webhook → Twilio SMS → and log an event to the `system.alerts` Kafka topic.
 7. The Next.js dashboard consumes all of this via REST + SSE, with an offline-first IndexedDB queue for field data entered without connectivity, syncing back via `/api/offline-sync` on reconnect.
 
