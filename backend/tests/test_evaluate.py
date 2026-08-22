@@ -15,12 +15,14 @@ Run: cd backend && pytest -q
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core.db import get_db
+from app.models.metrics import BeneficiaryRiskScore
+from app.models.operations import Alert
 from main import app
 
 EVALUATE_URL = "/api/v1/evaluate"
@@ -64,12 +66,15 @@ def client():
 
 
 def _override_db(row):
+    session = AsyncMock()
+    session.execute.return_value = _FakeResult(row)
+    session.add = Mock()
+
     async def _fake_get_db():
-        session = AsyncMock()
-        session.execute.return_value = _FakeResult(row)
         yield session
 
     app.dependency_overrides[get_db] = _fake_get_db
+    return session
 
 
 def test_unknown_beneficiary_returns_404(client):
@@ -89,8 +94,8 @@ def test_unknown_beneficiary_returns_404(client):
     assert "not found" in resp.json()["detail"].lower()
 
 
-def test_high_risk_uses_stub_and_triggers_automation(client, monkeypatch, _mock_automation):
-    _override_db(_fake_graph_row())
+def test_high_risk_uses_stub_persists_alert_and_triggers_automation(client, monkeypatch, _mock_automation):
+    session = _override_db(_fake_graph_row())
 
     def _raise_missing_model(*args, **kwargs):
         raise FileNotFoundError("model.pkl missing")
@@ -117,13 +122,26 @@ def test_high_risk_uses_stub_and_triggers_automation(client, monkeypatch, _mock_
     assert body["model_status"] == "stub"
     assert "Low Attendance" in body["drivers"]
 
+    added_objects = [call.args[0] for call in session.mock_calls if call[0] == "add"]
+    risk_rows = [obj for obj in added_objects if isinstance(obj, BeneficiaryRiskScore)]
+    alert_rows = [obj for obj in added_objects if isinstance(obj, Alert)]
+
+    assert len(risk_rows) == 1
+    assert len(alert_rows) == 1
+
+    persisted_alert = alert_rows[0]
+    assert persisted_alert.beneficiary_id == "BEN-9021"
+    assert persisted_alert.status == "new"
+    assert persisted_alert.type == "critical_risk"
+    assert persisted_alert.location == "Kisumu"
+
     n8n_mock, kafka_mock = _mock_automation
     n8n_mock.assert_awaited_once()
     kafka_mock.assert_awaited_once()
 
 
 def test_low_risk_does_not_trigger_automation(client, monkeypatch, _mock_automation):
-    _override_db(_fake_graph_row())
+    session = _override_db(_fake_graph_row())
 
     def _raise_missing_model(*args, **kwargs):
         raise FileNotFoundError("model.pkl missing")
@@ -144,6 +162,13 @@ def test_low_risk_does_not_trigger_automation(client, monkeypatch, _mock_automat
     body = resp.json()
     assert body["risk_tier"] == "LOW"
     assert body["automation_triggered"] is False
+
+    added_objects = [call.args[0] for call in session.mock_calls if call[0] == "add"]
+    risk_rows = [obj for obj in added_objects if isinstance(obj, BeneficiaryRiskScore)]
+    alert_rows = [obj for obj in added_objects if isinstance(obj, Alert)]
+
+    assert len(risk_rows) == 1
+    assert len(alert_rows) == 0
 
     n8n_mock, kafka_mock = _mock_automation
     n8n_mock.assert_not_awaited()
