@@ -2,35 +2,45 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Map, NavigationControl, ScaleControl, Marker, Popup } from "maplibre-gl";
+import { Map, NavigationControl, ScaleControl, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MapPin, AlertTriangle, User, X, ChevronDown, ChevronUp, Layers, Search } from "lucide-react";
-import type { MapRegion, Beneficiary, FieldWorker } from "@/types";
-import { mockMapRegions, mockBeneficiaries, mockFieldWorkers } from "@/lib/mock/data";
+import { MapPin, X, Compass } from "lucide-react";
+import type { Beneficiary, FieldWorker, MapRegion } from "@/types";
 import { getRiskTier } from "@/lib/utils";
 
 const DEFAULT_CENTER: [number, number] = [36.8219, -1.2921];
-const DEFAULT_ZOOM = 5.5;
+const DEFAULT_ZOOM = 5.8;
 
-const getRiskColor = (tier: string) => `var(--risk-${tier})`;
+const getRiskColorHex = (tier: string) => {
+  switch (tier) {
+    case "critical":
+      return "#991B1B";
+    case "high":
+      return "#DC2626";
+    case "medium":
+      return "#71717A";
+    default:
+      return "#52525B";
+  }
+};
 
 interface FieldMapProps {
   className?: string;
+  mapRegions: MapRegion[];
+  beneficiaries: Beneficiary[];
+  fieldWorkers: FieldWorker[];
 }
 
-export function FieldMap({ className }: FieldMapProps) {
+export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }: FieldMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<MapRegion | null>(null);
   const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
   const [showBeneficiaries, setShowBeneficiaries] = useState(true);
-  const [showFieldWorkers, setShowFieldWorkers] = useState(false);
-  const [showRiskHeatmap, setShowRiskHeatmap] = useState(false);
+  const [showFieldWorkers, setShowFieldWorkers] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   const initializeMap = useCallback(() => {
@@ -50,19 +60,20 @@ export function FieldMap({ className }: FieldMapProps) {
     map.on("load", () => {
       setMapLoaded(true);
 
-      mockMapRegions.forEach((region) => {
+      mapRegions.forEach((region) => {
         const el = document.createElement("div");
         el.className = "region-marker";
-        const riskColor = getRiskColor(getRiskTier(region.riskScore));
+        const tier = getRiskTier(region.riskScore);
+        const riskColor = getRiskColorHex(tier);
         el.innerHTML = `
           <div style="
-            width: 40px; height: 40px; border-radius: 50%;
+            width: 36px; height: 36px; border-radius: 50%;
             background: ${riskColor};
-            border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 12px; color: white;
-            cursor: pointer; transition: transform 0.2s;
-          " title="${region.name}: ${region.beneficiaries} beneficiaries">
+            font-weight: 700; font-size: 11px; color: white;
+            cursor: pointer; transition: transform 0.15s ease;
+          " title="${region.name}: ${region.beneficiaries} enrolled, ${region.highRisk} high-risk">
             ${region.highRisk}
           </div>
         `;
@@ -81,61 +92,60 @@ export function FieldMap({ className }: FieldMapProps) {
       if (showBeneficiaries) {
         addBeneficiaryMarkers(map);
       }
+      if (showFieldWorkers) {
+        addFieldWorkerMarkers(map);
+      }
     });
 
     mapRef.current = map;
-  }, [showBeneficiaries]);
+  }, [beneficiaries, mapRegions, showBeneficiaries, showFieldWorkers]);
 
   const addBeneficiaryMarkers = (map: Map) => {
-    const highRiskBeneficiaries = mockBeneficiaries.filter((b) => b.riskTier === "high" || b.riskTier === "critical");
+    const highRiskBeneficiaries = beneficiaries.filter(
+      (b) => b.riskTier === "high" || b.riskTier === "critical"
+    );
 
-    highRiskBeneficiaries.forEach((beneficiary) => {
+    highRiskBeneficiaries.forEach((b) => {
       const el = document.createElement("div");
-      const tier = beneficiary.riskTier;
-      const color = getRiskColor(tier);
+      const color = getRiskColorHex(b.riskTier);
       el.innerHTML = `
         <div style="
-          width: 16px; height: 16px; border-radius: 50%;
-          background: ${color}; border: 2px solid white;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.3); cursor: pointer;
-          transition: transform 0.15s;
-        " title="${beneficiary.code}: ${beneficiary.riskTier.toUpperCase()} (${beneficiary.riskScore})"></div>
+          width: 12px; height: 12px; border-radius: 50%;
+          background: ${color}; border: 1.5px solid white;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.2); cursor: pointer;
+        " title="${b.code}: ${b.riskTier.toUpperCase()} (${b.riskScore})"></div>
       `;
 
       new Marker({ element: el, anchor: "center" })
-        .setLngLat([beneficiary.coordinates.lng, beneficiary.coordinates.lat])
+        .setLngLat([b.coordinates.lng, b.coordinates.lat])
         .addTo(map);
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        setSelectedBeneficiary(beneficiary);
+        setSelectedBeneficiary(b);
         setSelectedRegion(null);
       });
     });
   };
 
   const addFieldWorkerMarkers = (map: Map) => {
-    mockFieldWorkers.filter((fw) => fw.isOnline).forEach((worker) => {
-      const region = mockMapRegions.find((r) => r.name === worker.region);
+    fieldWorkers.forEach((worker) => {
+      const region = mapRegions.find((item) => item.name.toLowerCase() === worker.region.toLowerCase());
       if (!region) return;
 
+      const [lng, lat] = region.coordinates;
       const el = document.createElement("div");
       el.innerHTML = `
         <div style="
-          width: 24px; height: 24px; border-radius: 50%;
-          background: #3b82f6; border: 2px solid white;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.3); cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-        " title="${worker.name} (${worker.assignedBeneficiaries} beneficiaries)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        </div>
+          width: 16px; height: 16px; border-radius: 9999px;
+          background: ${worker.isOnline ? "#16A34A" : "#71717A"};
+          border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+          cursor: pointer;
+        " title="${worker.name} (${worker.region})"></div>
       `;
 
       new Marker({ element: el, anchor: "center" })
-        .setLngLat(region.coordinates)
+        .setLngLat([lng, lat])
         .addTo(map);
     });
   };
@@ -149,146 +159,115 @@ export function FieldMap({ className }: FieldMapProps) {
     };
   }, [initializeMap]);
 
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
-    const map = mapRef.current;
-    try {
-      if (map.getSource("beneficiaries")) map.removeSource("beneficiaries");
-    } catch {}
-    try {
-      if (map.getLayer("beneficiaries")) map.removeLayer("beneficiaries");
-    } catch {}
-
-    if (showBeneficiaries) {
-      addBeneficiaryMarkers(map);
-    }
-  }, [showBeneficiaries, mapLoaded]);
-
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
-    const map = mapRef.current;
-    try {
-      if (map.getSource("field-workers")) map.removeSource("field-workers");
-    } catch {}
-    try {
-      if (map.getLayer("field-workers")) map.removeLayer("field-workers");
-    } catch {}
-
-    if (showFieldWorkers) {
-      addFieldWorkerMarkers(map);
-    }
-  }, [showFieldWorkers, mapLoaded]);
+  const flyToCenter = () => {
+    mapRef.current?.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, essential: true });
+  };
 
   const flyToRegion = (region: MapRegion) => {
-    mapRef.current?.flyTo({ center: region.coordinates, zoom: 8, essential: true });
+    mapRef.current?.flyTo({ center: region.coordinates, zoom: 8.5, essential: true });
   };
 
   return (
-    <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader className="pb-3">
+    <Card className={cn("h-full flex flex-col border border-border shadow-xs bg-card overflow-hidden", className)}>
+      <CardHeader className="pb-3 border-b border-border bg-muted/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <CardTitle className="text-base">Field Map</CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-1.5 text-sm">
+          <div>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-foreground" />
+              Geospatial Field Operations & Demand Map
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Interactive spatial view of regional risk clusters and active field agents.
+            </CardDescription>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
               <input
                 type="checkbox"
                 checked={showBeneficiaries}
                 onChange={(e) => setShowBeneficiaries(e.target.checked)}
-                className="rounded border-input"
+                className="rounded border-border accent-primary"
               />
-              High-risk beneficiaries
+              High-Risk Hotspots
             </label>
-            <label className="flex items-center gap-1.5 text-sm">
+            <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
               <input
                 type="checkbox"
                 checked={showFieldWorkers}
                 onChange={(e) => setShowFieldWorkers(e.target.checked)}
-                className="rounded border-input"
+                className="rounded border-border accent-primary"
               />
-              Field workers
+              Field Staff
             </label>
-            <Button variant="outline" size="sm" className="gap-1">
-              <Layers className="w-3.5 h-3.5" />
-              Layers
+            <Button variant="outline" size="sm" onClick={flyToCenter} className="h-7 gap-1 text-xs">
+              <Compass className="w-3.5 h-3.5" /> Reset View
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 p-0 relative">
-        <div ref={mapContainerRef} className="w-full h-full rounded-lg" />
+
+      <CardContent className="flex-1 p-0 relative min-h-[380px]">
+        <div ref={mapContainerRef} className="w-full h-full min-h-[380px]" />
 
         {!mapLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-            <div className="flex flex-col items-center gap-3 text-muted-foreground">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p>Loading map...</p>
+            <div className="flex flex-col items-center gap-2 text-muted-foreground text-xs">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="font-medium">Loading Map Tiles...</p>
             </div>
           </div>
         )}
 
-        <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
-          <Button variant="default" size="icon" className="shadow-lg" onClick={() => mapRef.current?.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM })} aria-label="Reset view">
-            <MapPin className="w-4 h-4" />
-          </Button>
-        </div>
-
+        {/* Selected Overlay Card */}
         {(selectedRegion || selectedBeneficiary) && (
-          <div className="absolute bottom-3 left-3 right-3 lg:right-auto lg:w-80 z-10 max-h-[60vh]">
-            <Card className="shadow-xl">
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div>
-                    {selectedRegion && (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-primary" />
-                          <h4 className="font-semibold">{selectedRegion.name} Region</h4>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{selectedRegion.beneficiaries} beneficiaries • {selectedRegion.highRisk} high-risk</p>
-                      </>
-                    )}
-                    {selectedBeneficiary && (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={cn("bg-[var(--risk-" + selectedBeneficiary.riskTier + ")]/10 text-[var(--risk-" + selectedBeneficiary.riskTier + ")]", "gap-1")}>
-                            <AlertTriangle className="w-3 h-3" />
-                            {selectedBeneficiary.riskTier.toUpperCase()}
-                          </Badge>
-                          <span className="font-mono font-bold">{selectedBeneficiary.riskScore}</span>
-                        </div>
-                        <p className="text-sm font-medium">{selectedBeneficiary.code} • {selectedBeneficiary.name}</p>
-                        <p className="text-xs text-muted-foreground">{selectedBeneficiary.region}, {selectedBeneficiary.subCounty}</p>
-                      </>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => { setSelectedRegion(null); setSelectedBeneficiary(null); }}>
-                    <X className="w-4 h-4" />
+          <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-80 z-20">
+            <Card className="shadow-md border border-border bg-card">
+              <CardContent className="p-3 space-y-2 text-xs">
+                <div className="flex items-start justify-between">
+                  {selectedRegion && (
+                    <div>
+                      <h4 className="font-semibold text-xs text-foreground">{selectedRegion.name} Region</h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedRegion.beneficiaries} Enrolled • <strong className="text-destructive">{selectedRegion.highRisk} High-Risk</strong>
+                      </p>
+                    </div>
+                  )}
+                  {selectedBeneficiary && (
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="destructive" className="text-[9px] uppercase font-semibold">
+                          {selectedBeneficiary.riskTier}
+                        </Badge>
+                        <span className="font-mono font-bold text-xs">{selectedBeneficiary.riskScore}</span>
+                      </div>
+                      <p className="font-semibold text-xs text-foreground mt-0.5">{selectedBeneficiary.code} • {selectedBeneficiary.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{selectedBeneficiary.region}, {selectedBeneficiary.subCounty}</p>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    onClick={() => { setSelectedRegion(null); setSelectedBeneficiary(null); }}
+                  >
+                    <X className="w-3.5 h-3.5" />
                   </Button>
                 </div>
 
                 {selectedRegion && (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Beneficiaries</span><span className="font-medium">{selectedRegion.beneficiaries}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">High Risk</span><span className="font-medium text-[var(--risk-high)]">{selectedRegion.highRisk}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Risk Score</span><span className="font-medium">{selectedRegion.riskScore.toFixed(2)}</span></div>
-                    <Button className="w-full mt-2" size="sm" onClick={() => flyToRegion(selectedRegion)}>
-                      Focus on Region
-                    </Button>
-                  </div>
+                  <Button size="sm" className="w-full h-7 text-xs font-medium" onClick={() => flyToRegion(selectedRegion)}>
+                    Focus Region
+                  </Button>
                 )}
 
                 {selectedBeneficiary && (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Attendance</span><span className="font-medium">{(selectedBeneficiary.attendanceRate * 100).toFixed(0)}%</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Assignments</span><span className="font-medium">{(selectedBeneficiary.assignmentCompletion * 100).toFixed(0)}%</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Travel Distance</span><span className="font-medium">{selectedBeneficiary.travelDistanceKm} km</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Last Active</span><span className="font-medium">{new Date(selectedBeneficiary.lastActivity).toLocaleString()}</span></div>
-                    <Separator className="my-2" />
-                    <p className="text-xs text-muted-foreground"><strong>Drivers:</strong> {selectedBeneficiary.riskDrivers.join(", ")}</p>
-                    <p className="text-xs text-muted-foreground"><strong>Action:</strong> {selectedBeneficiary.recommendedAction}</p>
-                    <Button className="w-full mt-2" size="sm" variant="default">
-                      Contact Field Worker
-                    </Button>
+                  <div className="space-y-1.5 pt-1">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] p-2 rounded bg-muted/40 border border-border">
+                      <div><span className="text-muted-foreground">Attendance:</span> <strong className="font-mono">{(selectedBeneficiary.attendanceRate * 100).toFixed(0)}%</strong></div>
+                      <div><span className="text-muted-foreground">Completion:</span> <strong className="font-mono">{(selectedBeneficiary.assignmentCompletion * 100).toFixed(0)}%</strong></div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground"><strong>Action:</strong> {selectedBeneficiary.recommendedAction}</p>
                   </div>
                 )}
               </CardContent>
@@ -296,23 +275,25 @@ export function FieldMap({ className }: FieldMapProps) {
           </div>
         )}
 
-        <div className="absolute bottom-3 left-3 z-10">
-          <div className="bg-background/90 backdrop-blur rounded-lg border p-2 text-xs">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: "var(--risk-critical)" }} />
-              <span>Critical</span>
+        {/* Legend Overlay */}
+        <div className="absolute top-3 left-3 z-10">
+          <div className="bg-card/90 backdrop-blur-sm rounded-md border border-border p-2 shadow-xs text-[11px] space-y-1">
+            <span className="font-mono font-medium text-muted-foreground block text-[10px] uppercase">Risk Tier Legend</span>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-red-700" />
+              <span>Critical Risk</span>
             </div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: "var(--risk-high)" }} />
-              <span>High</span>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span>High Risk</span>
             </div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: "var(--risk-medium)" }} />
-              <span>Medium</span>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-zinc-500" />
+              <span>Medium Risk</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: "var(--risk-low)" }} />
-              <span>Low</span>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-zinc-700 dark:bg-zinc-400" />
+              <span>Low Risk</span>
             </div>
           </div>
         </div>

@@ -58,3 +58,4 @@ htmlcov/
 Thumbs.db
 node_modules/
 .next/
+end-to-end-implementation-backlog.md

@@ -31,17 +31,25 @@ from starlette.concurrency import run_in_threadpool
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.models.beneficiary import BeneficiaryIdentityGraph
+from app.models.operations import Alert
 from app.schemas.evaluate import EvaluateRequest, EvaluateResponse
 from app.services.kafka_producer import publish_alert
 from app.services.n8n_trigger import trigger_n8n_webhook
+from app.services.risk_scores import persist_risk_score, refresh_risk_trend_snapshot
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 settings = get_settings()
 
-# Fields the Identity Graph can backfill when the caller's request doesn't
-# include them — never overrides what the caller explicitly sent.
-_GRAPH_BACKFILL_FIELDS = (
+# Fields sourced from the Identity Graph for scoring so /evaluate stays aligned
+# with synthetic data that has been ingested and persisted, rather than caller-
+# supplied feature values. We keep the request contract unchanged for frontend
+# compatibility, but DB-derived values are the source of truth.
+_GRAPH_SCORE_FIELDS = (
+    "region",
+    "attendance_rate",
+    "assignment_completion",
+    "travel_distance_km",
     "grade_average",
     "socioeconomic_index",
     "historical_dropouts_in_family",
@@ -91,17 +99,59 @@ def _stub_score(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _fire_automation(*, beneficiary_id: str, risk_score: float, risk_tier: str, region: str) -> None:
+async def _persist_alert_record(
+    db: AsyncSession,
+    *,
+    beneficiary_id: str,
+    risk_score: float,
+    risk_tier: str,
+    region: str,
+    drivers: list[str],
+    recommended_action: str,
+) -> Alert:
+    created_at = datetime.now(timezone.utc)
+    alert = Alert(
+        alert_id=f"ALT-{uuid.uuid4().hex[:8].upper()}",
+        beneficiary_id=beneficiary_id,
+        field_worker_id=None,
+        severity="critical" if risk_tier == "HIGH" else "medium",
+        type="critical_risk" if risk_tier == "HIGH" else "high_risk",
+        status="new",
+        description=(
+            f"Beneficiary {beneficiary_id} evaluated as {risk_tier} risk "
+            f"({risk_score:.2f}). Recommended action: {recommended_action}."
+        ),
+        location=region or "Unknown",
+        device_id=None,
+        alert_metadata={
+            "source": "evaluate",
+            "risk_score": risk_score,
+            "risk_tier": risk_tier,
+            "drivers": drivers,
+            "recommended_action": recommended_action,
+        },
+        created_at=created_at,
+        acknowledged_by=None,
+        acknowledged_at=None,
+        resolved_at=None,
+    )
+    db.add(alert)
+    await db.commit()
+    await db.refresh(alert)
+    return alert
+
+
+async def _fire_automation(*, alert: Alert, risk_score: float, risk_tier: str) -> None:
     """Fan out the automation rule to n8n (SMS) and Kafka (system.alerts)
     concurrently. Both are best-effort/non-raising — see their modules."""
     alert_payload = {
-        "alert_id": f"ALT-{uuid.uuid4().hex[:8].upper()}",
-        "beneficiary_id": beneficiary_id,
+        "alert_id": alert.alert_id,
+        "beneficiary_id": alert.beneficiary_id,
         "risk_score": risk_score,
         "risk_tier": risk_tier,
-        "region": region,
-        "triggered_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "source": "evaluate/n8n",
+        "region": alert.location,
+        "triggered_at": alert.created_at.isoformat().replace("+00:00", "Z"),
+        "source": "evaluate",
     }
     await asyncio.gather(
         trigger_n8n_webhook(alert_payload),
@@ -132,11 +182,19 @@ async def evaluate_beneficiary(
             detail=f"Beneficiary ID '{payload.beneficiary_id}' not found in the Identity Graph",
         )
 
-    enriched: dict[str, Any] = payload.model_dump()
-    for field in _GRAPH_BACKFILL_FIELDS:
+    enriched: dict[str, Any] = {"beneficiary_id": payload.beneficiary_id}
+    for field in _GRAPH_SCORE_FIELDS:
         value = getattr(graph_row, field, None)
         if value is not None:
-            enriched.setdefault(field, value)
+            enriched[field] = value
+
+    # If the identity graph is missing a required scoring field, fall back to the
+    # request payload only for that specific gap so the route remains usable while
+    # still preferring ingested synthetic data as the system of record.
+    request_values = payload.model_dump()
+    for field in ("region", "attendance_rate", "assignment_completion", "travel_distance_km"):
+        if enriched.get(field) is None:
+            enriched[field] = request_values[field]
 
     model_status = "live"
     try:
@@ -153,6 +211,18 @@ async def evaluate_beneficiary(
 
     response = EvaluateResponse(**scored, model_status=model_status)
 
+    await persist_risk_score(
+        db,
+        beneficiary_id=response.beneficiary_id,
+        risk_score=response.risk_score,
+        risk_tier=response.risk_tier,
+        drivers=response.drivers,
+        recommended_action=response.recommended_action,
+        model_version=model_status,
+        automation_triggered=response.automation_triggered,
+    )
+    await refresh_risk_trend_snapshot(db)
+
     # Surface fields for the audit-logging middleware (main.py) without
     # coupling it to this route's internals.
     request.state.beneficiary_id = response.beneficiary_id
@@ -160,11 +230,19 @@ async def evaluate_beneficiary(
     request.state.automation_triggered = response.automation_triggered
 
     if response.automation_triggered:
-        await _fire_automation(
+        alert = await _persist_alert_record(
+            db,
             beneficiary_id=response.beneficiary_id,
             risk_score=response.risk_score,
             risk_tier=response.risk_tier,
-            region=payload.region,
+            region=str(enriched.get("region") or payload.region),
+            drivers=response.drivers,
+            recommended_action=response.recommended_action,
+        )
+        await _fire_automation(
+            alert=alert,
+            risk_score=response.risk_score,
+            risk_tier=response.risk_tier,
         )
 
     return response

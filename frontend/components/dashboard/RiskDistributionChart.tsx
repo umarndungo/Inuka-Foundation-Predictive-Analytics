@@ -1,19 +1,19 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltipContent,
-  ChartLegendContent,
   PieChart,
   Pie,
   Cell,
   Tooltip,
-  Legend,
 } from "@/components/ui/chart";
 import type { RiskDistribution } from "@/types";
+import { ShieldAlert } from "lucide-react";
 
 interface RiskDistributionChartProps {
   data: RiskDistribution;
@@ -21,14 +21,14 @@ interface RiskDistributionChartProps {
 }
 
 const CHART_CONFIG: ChartConfig = {
-  low: { label: "Low", color: "var(--risk-low)" },
-  medium: { label: "Medium", color: "var(--risk-medium)" },
-  high: { label: "High", color: "var(--risk-high)" },
-  critical: { label: "Critical", color: "var(--risk-critical)" },
+  low: { label: "Low Tier", color: "var(--risk-low)" },
+  medium: { label: "Medium Tier", color: "var(--risk-medium)" },
+  high: { label: "High Tier", color: "var(--risk-high)" },
+  critical: { label: "Critical Tier", color: "var(--risk-critical)" },
 };
 
 export function RiskDistributionChart({ data, className }: RiskDistributionChartProps) {
-  const total = data.total;
+  const total = data.total || 1;
   const chartData = [
     { name: "Low", value: data.low, fill: "var(--risk-low)" },
     { name: "Medium", value: data.medium, fill: "var(--risk-medium)" },
@@ -37,41 +37,48 @@ export function RiskDistributionChart({ data, className }: RiskDistributionChart
   ];
 
   return (
-    <Card className={cn("h-full", className)}>
-      <CardHeader className="pb-3">
+    <Card className={cn("h-full flex flex-col border-none shadow-none rounded-md bg-card overflow-hidden", className)}>
+      <CardHeader className="p-3.5 border-b border-border/40 bg-secondary/20">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Risk Distribution</CardTitle>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-[var(--risk-critical)]" />
-            <span>12 moved to high-risk in 24h</span>
+          <div>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 font-mono uppercase tracking-wider">
+              <ShieldAlert className="w-4 h-4 text-primary" />
+              Program Risk Tier Distribution
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Classification of enrolled beneficiaries across ML-calculated risk tiers.
+            </CardDescription>
           </div>
+          <StatusBadge status="high" label="+12 Flagged 24h" showDot size="sm" />
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="text-center p-3 rounded-lg bg-[var(--risk-low)]/10">
-            <p className="text-2xl font-bold text-[var(--risk-low)]">{data.low.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Low ({((data.low / total) * 100).toFixed(1)}%)</p>
+
+      <CardContent className="p-4 space-y-5 flex-1">
+        {/* Metric Sub-cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="p-2.5 rounded bg-secondary/60 border border-border/40 text-center space-y-0.5">
+            <span className="text-base font-bold font-mono text-foreground">{data.low.toLocaleString()}</span>
+            <span className="block text-[11px] text-muted-foreground font-mono">Low ({((data.low / total) * 100).toFixed(1)}%)</span>
           </div>
-          <div className="text-center p-3 rounded-lg bg-[var(--risk-medium)]/10">
-            <p className="text-2xl font-bold text-[var(--risk-medium)]">{data.medium.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Medium ({((data.medium / total) * 100).toFixed(1)}%)</p>
+          <div className="p-2.5 rounded bg-secondary/60 border border-border/40 text-center space-y-0.5">
+            <span className="text-base font-bold font-mono text-foreground">{data.medium.toLocaleString()}</span>
+            <span className="block text-[11px] text-muted-foreground font-mono">Medium ({((data.medium / total) * 100).toFixed(1)}%)</span>
           </div>
-          <div className="text-center p-3 rounded-lg bg-[var(--risk-high)]/10">
-            <p className="text-2xl font-bold text-[var(--risk-high)]">{data.high.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">High ({((data.high / total) * 100).toFixed(1)}%)</p>
+          <div className="p-2.5 rounded bg-red-500/10 border border-red-500/20 text-center space-y-0.5">
+            <span className="text-base font-bold font-mono text-primary">{data.high.toLocaleString()}</span>
+            <span className="block text-[11px] font-mono font-medium text-primary">High ({((data.high / total) * 100).toFixed(1)}%)</span>
           </div>
-          <div className="text-center p-3 rounded-lg bg-[var(--risk-critical)]/10">
-            <p className="text-2xl font-bold text-[var(--risk-critical)]">{data.critical.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Critical ({((data.critical / total) * 100).toFixed(1)}%)</p>
+          <div className="p-2.5 rounded bg-red-500/20 border border-red-500/30 text-center space-y-0.5">
+            <span className="text-base font-bold font-mono text-red-600">{data.critical.toLocaleString()}</span>
+            <span className="block text-[11px] font-mono font-bold text-red-600">Critical ({((data.critical / total) * 100).toFixed(1)}%)</span>
           </div>
         </div>
 
-        <div className="mt-6 relative h-48 md:h-56">
-          <ChartContainer config={CHART_CONFIG} className="h-full aspect-auto">
+        {/* Donut Chart */}
+        <div className="relative h-48 min-h-[190px] flex items-center justify-center">
+          <ChartContainer config={CHART_CONFIG} className="w-full h-full">
             <PieChart>
               <Tooltip content={<ChartTooltipContent hideLabel nameKey="name" />} />
-              <Legend content={<ChartLegendContent className="flex flex-col gap-2 md:flex-row md:justify-center" />} />
               <Pie
                 data={chartData}
                 cx="50%"
@@ -83,18 +90,16 @@ export function RiskDistributionChart({ data, className }: RiskDistributionChart
                 nameKey="name"
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                  <Cell key={`cell-${index}`} fill={entry.fill} stroke="var(--card)" strokeWidth={2} />
                 ))}
               </Pie>
             </PieChart>
           </ChartContainer>
-        </div>
 
-        <div className="mt-4 p-3 rounded-lg bg-muted/50">
-          <p className="text-sm text-muted-foreground">
-            <strong>12 beneficiaries</strong> moved into high-risk status over the last 24 hours.
-            <span className="ml-2 text-primary font-medium">Review recommended actions.</span>
-          </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-2xl font-bold font-sans text-foreground">{total.toLocaleString()}</span>
+            <span className="text-[10px] text-muted-foreground font-mono font-semibold uppercase tracking-wider">Total</span>
+          </div>
         </div>
       </CardContent>
     </Card>

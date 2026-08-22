@@ -94,6 +94,7 @@ export interface KPIMetric {
   description: string;
   icon: string;
   status?: "normal" | "warning" | "critical" | "positive";
+  isInverse?: boolean;
 }
 
 export interface SystemStatus {
@@ -158,4 +159,35 @@ export interface OfflineQueueItem {
   timestamp: string;
   retries: number;
   status: "pending" | "syncing" | "synced" | "failed";
+}
+
+// API Contracts per docs/00_end_to_end_integration.md
+export interface EvaluateRequest {
+  beneficiary_id: string;
+  attendance_rate: number;
+  assignment_completion: number;
+  travel_distance_km: number;
+  region: string;
+}
+
+export interface EvaluateResponse {
+  beneficiary_id: string;
+  risk_score: number;
+  risk_tier: "LOW" | "MEDIUM" | "HIGH";
+  drivers: string[];
+  recommended_action: string;
+  automation_triggered: boolean;
+}
+
+export interface RegionalDemandForecast {
+  region: string;
+  predicted_demand: number;
+  historical_trend: number[];
+  risk_factor: number;
+  dates: string[];
+  summary: {
+    expectedChange: number;
+    peakDay: string;
+    confidence: number;
+  };
 }
