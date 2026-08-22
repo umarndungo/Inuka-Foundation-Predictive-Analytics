@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -29,14 +29,29 @@ import {
 import type { Beneficiary } from "@/types";
 import { formatRiskScore, getRiskTierLabel } from "@/lib/utils";
 
-interface HighRiskBeneficiariesProps {
+interface BeneficiariesTableProps {
   beneficiaries: Beneficiary[];
   className?: string;
+  title?: string;
+  description?: string;
+  defaultRiskFilter?: "all" | "critical" | "high" | "medium" | "low";
+  exportFilePrefix?: string;
+  modalDescription?: string;
+  recommendedActionLabel?: string;
 }
 
-export function HighRiskBeneficiaries({ beneficiaries, className }: HighRiskBeneficiariesProps) {
+export function BeneficiariesTable({
+  beneficiaries,
+  className,
+  title = "Beneficiary Directory",
+  description = "Beneficiary risk scores, ML driver signals, and recommended follow-up actions.",
+  defaultRiskFilter = "all",
+  exportFilePrefix = "beneficiaries_export",
+  modalDescription = "Detailed beneficiary profile and recommended intervention guide.",
+  recommendedActionLabel = "Recommended Action",
+}: BeneficiariesTableProps) {
   const [search, setSearch] = useState("");
-  const [riskFilter, setRiskFilter] = useState<"all" | "critical" | "high" | "medium" | "low">("all");
+  const [riskFilter, setRiskFilter] = useState<"all" | "critical" | "high" | "medium" | "low">(defaultRiskFilter);
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Beneficiary; direction: "asc" | "desc" }>({
     key: "riskScore",
@@ -101,10 +116,15 @@ export function HighRiskBeneficiaries({ beneficiaries, className }: HighRiskBene
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `beneficiaries_risk_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${exportFilePrefix}_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  useEffect(() => {
+    setRiskFilter(defaultRiskFilter);
+    setPage(1);
+  }, [defaultRiskFilter]);
 
   const SortIcon = ({ columnKey }: { columnKey: keyof Beneficiary }) => {
     if (sortConfig.key !== columnKey) return <ChevronDown className="w-3.5 h-3.5 text-muted-foreground opacity-40" />;
@@ -119,10 +139,10 @@ export function HighRiskBeneficiaries({ beneficiaries, className }: HighRiskBene
           <div className="space-y-1">
             <CardTitle className="text-sm font-semibold flex items-center gap-2 font-mono uppercase tracking-wider text-foreground">
               <AlertTriangle className="w-4 h-4 text-primary" />
-              High-Risk Beneficiary Directory
+              {title}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Live dropout risk scores, ML driver signals, and targeted field action dispatch.
+              {description}
             </CardDescription>
           </div>
 
@@ -333,7 +353,7 @@ export function HighRiskBeneficiaries({ beneficiaries, className }: HighRiskBene
                 <StatusBadge status={selectedBeneficiary.riskTier} size="sm" showDot />
               </div>
               <DialogDescription className="text-xs text-muted-foreground">
-                Detailed dropout evaluation and field intervention guide.
+                {modalDescription}
               </DialogDescription>
             </DialogHeader>
 
@@ -369,10 +389,8 @@ export function HighRiskBeneficiaries({ beneficiaries, className }: HighRiskBene
               </div>
 
               <div className="p-3.5 rounded bg-primary/10 border border-primary/20 text-xs space-y-1">
-                <span className="font-semibold text-primary block">Recommended Action:</span>
-                <p className="text-foreground leading-relaxed">
-                  Dispatch Field Officer to conduct home visit in {selectedBeneficiary.region} within 48 hours.
-                </p>
+                <span className="font-semibold text-primary block">{recommendedActionLabel}:</span>
+                <p className="text-foreground leading-relaxed">{selectedBeneficiary.recommendedAction}</p>
               </div>
             </div>
           </DialogContent>
