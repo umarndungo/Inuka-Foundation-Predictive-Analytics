@@ -22,7 +22,7 @@ function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
 }
 
 function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+  return <TooltipPrimitive.Trigger render={<span className="inline-flex" />} data-slot="tooltip-trigger" {...props} />
 }
 
 function TooltipContent({

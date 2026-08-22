@@ -53,8 +53,8 @@ export function SyncStatusIndicator({ compact = false }: { compact?: boolean }) 
     if (!isOnline) {
       return {
         icon: WifiOff,
-        color: "text-destructive",
-        bgColor: "bg-destructive/10",
+        color: "text-red-600 dark:text-red-400",
+        bgColor: "bg-red-500/10 border-red-500/20",
         label: "Offline",
         description: `Last synced ${formatLastSync(lastSync)}`,
       };
@@ -63,16 +63,16 @@ export function SyncStatusIndicator({ compact = false }: { compact?: boolean }) 
       case "syncing":
         return {
           icon: Loader2,
-          color: "text-primary",
-          bgColor: "bg-primary/10",
+          color: "text-red-600 dark:text-red-400",
+          bgColor: "bg-red-500/10 border-red-500/20",
           label: "Syncing...",
           description: "Synchronizing data with server",
         };
       case "error":
         return {
           icon: AlertCircle,
-          color: "text-destructive",
-          bgColor: "bg-destructive/10",
+          color: "text-red-600 dark:text-red-400",
+          bgColor: "bg-red-500/10 border-red-500/20",
           label: "Sync failed",
           description: "Click to retry synchronization",
         };
@@ -80,8 +80,8 @@ export function SyncStatusIndicator({ compact = false }: { compact?: boolean }) 
       default:
         return {
           icon: CheckCircle,
-          color: "text-success",
-          bgColor: "bg-success/10",
+          color: "text-zinc-600 dark:text-zinc-400",
+          bgColor: "bg-zinc-500/10 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-800",
           label: "Synced",
           description: `Last synced ${formatLastSync(lastSync)}`,
         };
