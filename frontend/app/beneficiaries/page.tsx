@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Users } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function BeneficiariesPage() {
   const paginatedRes = await api.getBeneficiaries({ pageSize: 100 });
   const beneficiaries = paginatedRes.items;

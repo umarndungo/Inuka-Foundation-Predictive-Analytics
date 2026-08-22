@@ -40,7 +40,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 <Shield className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
               <SheetTitle className="font-heading font-bold text-sm tracking-tight text-foreground">
-                Inuka Sentinel
+                Inuka Risk Radar
               </SheetTitle>
             </Link>
           </div>

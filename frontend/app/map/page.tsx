@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
 import { MapPin } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function MapPage() {
   const [mapRegions, fieldWorkers] = await Promise.all([
     api.getMapRegions(),

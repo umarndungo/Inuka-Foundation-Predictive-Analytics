@@ -20,7 +20,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
         <Menu className="w-4 h-4" />
       </Button>
       <span className="font-heading font-bold text-xs tracking-tight text-foreground">
-        Inuka Sentinel
+        Inuka Risk Radar
       </span>
     </header>
   );

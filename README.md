@@ -121,35 +121,62 @@ See the [full monorepo layout](#) in the implementation spec for every file.
 
 ## Getting Started
 
+### Full demo stack with Docker Compose
+
 ```bash
 # 1. Clone and enter the repo
-git clone <repo-url> && cd inuka-sentinel
+git clone https://github.com/umarndungo/Inuka-Foundation-Predictive-Analytics && cd Inuka-Risk-Radar
 
-# 2. Start the data fabric (Kafka + PostgreSQL)
-docker compose up -d kafka postgres
+# 2. Bring up the full stack
+./scripts/demo_up.sh
+```
 
-# 3. Generate synthetic data and seed the pipeline
-python data-pipeline/scripts/seed_generator.py
-python data-pipeline/scripts/kafka_producer_sim.py
+This starts:
+- `redpanda` (Kafka-compatible event streaming)
+- `postgres` (Bronze / Silver / Gold storage)
+- `backend` (FastAPI API)
+- `bronze-consumer` (Kafka -> Postgres)
+- `n8n` (workflow automation)
+- `frontend` (Next.js dashboard, configured to call `http://backend:8000` inside Docker)
 
-# 4. Run schema migrations
-psql -f data-pipeline/sql/01_bronze_schema.sql
-psql -f data-pipeline/sql/02_silver_identity_graph.sql
-psql -f data-pipeline/sql/03_gold_aggregates.sql
+Endpoints:
+- API docs: `http://localhost:8000/docs`
+- Backend health: `http://localhost:8000/health`
+- Dashboard: `http://localhost:3000`
+- n8n UI: `http://localhost:5678`
 
-# 5. Start the backend
+### Manual compose bring-up
+
+```bash
+docker compose up -d --build
+```
+
+To seed demo data, load demographics, and optionally train the model:
+
+```bash
+./scripts/demo_up.sh
+```
+
+### Local development split mode
+
+If you want to run only infrastructure in Docker and develop app layers locally:
+
+```bash
+# Infra + automation
+docker compose up -d redpanda redpanda-init postgres n8n
+
+# Backend
 cd backend && pip install -r requirements.txt
 uvicorn main:app --reload
 
-# 6. Start the frontend
+# Frontend
 cd frontend && npm install
-npm run dev
-
-# 7. Start n8n (self-hosted, Docker)
-docker compose up -d n8n
+NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_USE_MOCK=false npm run dev
 ```
 
 The API docs are available at `http://localhost:8000/docs` once the backend is running. The dashboard runs at `http://localhost:3000`.
+
+> Note: when the frontend runs in Docker it must call the backend over the Compose network using `http://backend:8000`. Only local non-Docker frontend development should use `http://localhost:8000`.
 
 > **Note:** All data used in this project is synthetic. No real beneficiary data is processed.
 

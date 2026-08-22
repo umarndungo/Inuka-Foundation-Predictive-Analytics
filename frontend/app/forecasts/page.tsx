@@ -4,6 +4,8 @@ import { DemandForecastChart } from "@/components/dashboard/DemandForecastChart"
 import { StatusBadge } from "@/components/ui/status-badge";
 import { api } from "@/lib/api";
 
+export const dynamic = "force-dynamic";
+
 export default async function ForecastsPage() {
   const [nationalForecast, nairobiForecast, kisumuForecast] = await Promise.all([
     api.getDemandForecast("National"),

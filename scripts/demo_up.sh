@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bring up Inuka Risk Radar for a live demo:
-#   Redpanda + Postgres + FastAPI + Bronze consumer + n8n
+#   Redpanda + Postgres + FastAPI + Bronze consumer + n8n + Next.js frontend
 # then seed demographics, train model (if missing), and publish a telemetry batch.
 #
 # Usage:
@@ -130,7 +130,11 @@ print_summary() {
   Kafka (host): localhost:19092
   Postgres:     localhost:5433  (inuka / inuka / inuka_risk_radar)
 
-  Frontend (host):
+  Frontend:      http://localhost:3000
+
+  Frontend container uses internal backend URL: http://backend:8000
+
+  Frontend dev override (optional):
     cd frontend && npm install
     NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_USE_MOCK=false npm run dev
 
@@ -179,12 +183,13 @@ if [[ -f "$ROOT/.env.example" && ! -f "$ROOT/.env" ]]; then
   echo "Created .env from .env.example (Twilio fields optional)."
 fi
 
-echo "Building / starting Redpanda, Postgres, backend, bronze-consumer, n8n…"
-"${COMPOSE[@]}" up -d --build redpanda redpanda-init postgres backend bronze-consumer n8n
+echo "Building / starting Redpanda, Postgres, backend, bronze-consumer, n8n, frontend…"
+"${COMPOSE[@]}" up -d --build redpanda redpanda-init postgres backend bronze-consumer n8n frontend
 
 wait_compose_healthy postgres
 wait_compose_healthy redpanda
 wait_http "http://localhost:8000/health" "backend"
+wait_http "http://localhost:3000" "frontend"
 
 if [[ "$DO_SEED" -eq 1 ]]; then
   echo "Generating synthetic seed…"
