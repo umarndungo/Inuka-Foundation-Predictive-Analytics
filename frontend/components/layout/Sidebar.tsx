@@ -15,33 +15,40 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-shrink-0 h-full transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
+        "hidden md:flex flex-shrink-0 h-full transition-all duration-200 border-r border-border bg-card shadow-none",
+        collapsed ? "w-16" : "w-60"
       )}
     >
-      <SidebarComponent className="w-full">
-        <div className="flex h-16 items-center justify-between px-4 border-b">
+      <SidebarComponent className="w-full flex flex-col h-full bg-card border-none">
+        {/* Sidebar Header & Brand */}
+        <div className="flex h-14 items-center justify-between px-3.5 border-b border-border">
           {!collapsed && (
-            <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-              <div className="relative w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-                <Shield className="w-5 h-5 text-primary-foreground" />
+            <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
+              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center flex-shrink-0">
+                <Shield className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
-              <span className="font-heading font-semibold text-lg text-foreground truncate">
-                Inuka Sentinel
-              </span>
+              <div className="flex flex-col min-w-0">
+                <span className="font-heading font-bold text-sm tracking-tight text-foreground truncate">
+                  Inuka Risk Radar
+                </span>
+                <span className="text-[9px] text-muted-foreground font-mono truncate uppercase tracking-wider">
+                  Risk Intelligence
+                </span>
+              </div>
             </Link>
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className={cn("text-muted-foreground hover:text-foreground", collapsed && "mx-auto")}
+            className={cn("h-7 w-7 text-muted-foreground hover:text-foreground rounded", collapsed && "mx-auto")}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </Button>
         </div>
 
+        {/* Navigation List */}
         <SidebarNav collapsed={collapsed} />
       </SidebarComponent>
     </aside>

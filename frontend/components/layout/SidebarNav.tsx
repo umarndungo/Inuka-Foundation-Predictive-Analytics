@@ -5,31 +5,24 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  AlertTriangle,
   Users,
   TrendingUp,
-  Activity,
-  Bell,
+  AlertTriangle,
   Map,
-  RefreshCw,
-  Settings,
-  Shield,
-  Database,
+  ShieldAlert,
+  Sparkles,
 } from "lucide-react";
 
 export const navigation = [
-  { name: "Overview", href: "/dashboard", icon: LayoutDashboard, group: "Overview" },
-  { name: "Risk Analysis", href: "/risk", icon: AlertTriangle, group: "Intelligence" },
-  { name: "Beneficiaries", href: "/beneficiaries", icon: Users, group: "Intelligence" },
-  { name: "Forecasts", href: "/forecasts", icon: TrendingUp, group: "Intelligence" },
-  { name: "Live Telemetry", href: "/telemetry", icon: Activity, group: "Operations" },
-  { name: "Alerts", href: "/alerts", icon: Bell, group: "Operations" },
-  { name: "Field Map", href: "/map", icon: Map, group: "Operations" },
-  { name: "Sync Status", href: "/sync", icon: RefreshCw, group: "System" },
-  { name: "Settings", href: "/settings", icon: Settings, group: "System" },
+  { name: "Overview", href: "/dashboard", icon: LayoutDashboard, group: "Analytics" },
+  { name: "Demand Forecasts", href: "/forecasts", icon: TrendingUp, group: "Analytics", badge: "Live" },
+  { name: "Risk Radar", href: "/risk", icon: ShieldAlert, group: "Analytics" },
+  { name: "Beneficiaries", href: "/beneficiaries", icon: Users, group: "Field Operations" },
+  { name: "Early Warning Alerts", href: "/alerts", icon: AlertTriangle, group: "Field Operations", badge: "3" },
+  { name: "Geospatial Map", href: "/map", icon: Map, group: "Field Operations" },
 ] as const;
 
-const groupLabels = ["Overview", "Intelligence", "Operations", "System"];
+const groupLabels = ["Analytics", "Field Operations"];
 
 interface SidebarNavProps {
   collapsed?: boolean;
@@ -42,7 +35,7 @@ export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }:
 
   return (
     <>
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
         {groupLabels.map((group) => {
           const items = navigation.filter((n) => n.group === group);
           if (items.length === 0) return null;
@@ -50,7 +43,7 @@ export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }:
           return (
             <div key={group} className="space-y-1">
               {!collapsed && (
-                <h3 className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h3 className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
                   {group}
                 </h3>
               )}
@@ -58,21 +51,44 @@ export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }:
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
                     onClick={onNavigate}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      isActive && "bg-primary text-primary-foreground shadow-sm",
-                      collapsed && "justify-center"
+                      "flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-colors group",
+                      isActive
+                        ? "bg-secondary text-foreground font-semibold border border-border"
+                        : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground border border-transparent",
+                      collapsed && "justify-center px-2"
                     )}
                     title={collapsed ? item.name : undefined}
                   >
-                    <item.icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-                    {!collapsed && <span className="font-medium">{item.name}</span>}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <item.icon
+                        className={cn(
+                          "w-4 h-4 flex-shrink-0 transition-colors",
+                          isActive ? "text-primary font-bold" : "text-muted-foreground group-hover:text-foreground"
+                        )}
+                        aria-hidden="true"
+                      />
+                      {!collapsed && <span className="truncate">{item.name}</span>}
+                    </div>
+
+                    {!collapsed && "badge" in item && item.badge && (
+                      <span
+                        className={cn(
+                          "px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded",
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-muted-foreground border border-border"
+                        )}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -82,16 +98,15 @@ export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }:
       </nav>
 
       {showFooter && !collapsed && (
-        <div className="border-t p-3">
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Database className="w-4 h-4" />
-              <span>v1.0.0-beta</span>
+        <div className="border-t border-border p-3 bg-secondary/30">
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+            <div className="flex items-center gap-1.5 font-medium">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[11px]">Predictive ML v1.0</span>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Shield className="w-4 h-4" />
-              <span>Inuka Foundation</span>
-            </div>
+            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold">
+              Synced
+            </span>
           </div>
         </div>
       )}

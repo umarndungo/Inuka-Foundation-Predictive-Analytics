@@ -69,13 +69,13 @@ export function RiskTrendChart({ data, className }: RiskTrendChartProps) {
         <div className="relative h-64">
           <ChartContainer config={CHART_CONFIG} className="h-full aspect-auto">
             <LineChart data={filteredData}>
-              <CartesianGrid strokeDasharray="4 4" vertical={false} />
+              <CartesianGrid stroke="var(--border)" strokeOpacity={0.4} strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickFormatter={(value) =>
                   new Date(value).toLocaleDateString("en-KE", { month: "short", day: "numeric" })
                 }
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "var(--font-mono)" }}
                 tickLine={false}
                 axisLine={false}
               />
@@ -84,56 +84,56 @@ export function RiskTrendChart({ data, className }: RiskTrendChartProps) {
                 tickFormatter={(value) =>
                   value === 0 ? "0" : value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value
                 }
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "var(--font-mono)" }}
                 tickLine={false}
                 axisLine={false}
                 orientation="left"
                 width={40}
               />
-              <Tooltip content={<ChartTooltipContent />} />
+              <Tooltip content={<ChartTooltipContent className="font-mono text-xs" />} />
               <Legend content={<ChartLegendContent className="flex flex-wrap gap-4 justify-center" />} />
               <Line
                 type="monotone"
                 dataKey="overall"
-                stroke="var(--color-overall)"
+                stroke="var(--foreground)"
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 6 }}
+                activeDot={{ r: 5 }}
               />
               <Line
                 type="monotone"
                 dataKey="highRisk"
-                stroke="var(--color-highRisk)"
+                stroke="var(--risk-high)"
                 strokeWidth={2}
                 strokeDasharray="4 4"
                 dot={false}
-                activeDot={{ r: 6 }}
+                activeDot={{ r: 5 }}
               />
               <Line
                 type="monotone"
                 dataKey="critical"
-                stroke="var(--color-critical)"
+                stroke="var(--risk-critical)"
                 strokeWidth={2}
-                strokeDasharray="8 4"
+                strokeDasharray="2 2"
                 dot={false}
-                activeDot={{ r: 6 }}
+                activeDot={{ r: 5 }}
               />
             </LineChart>
           </ChartContainer>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-mono text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <span className="w-6 h-1 bg-primary" />
-            <span>Overall Risk Score</span>
+            <span className="w-6 h-0.5 bg-foreground" />
+            <span>Overall Risk</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-6 h-1 bg-[var(--risk-high)] border-t border-b" style={{ borderStyle: "dashed" }} />
-            <span>High Risk Population</span>
+            <span className="w-6 h-0.5 bg-[var(--risk-high)]" />
+            <span>High Risk</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-6 h-1 bg-[var(--risk-critical)] border-t border-b" style={{ borderStyle: "dotted" }} />
-            <span>Critical Population</span>
+            <span className="w-6 h-0.5 bg-[var(--risk-critical)]" />
+            <span>Critical Risk</span>
           </div>
         </div>
       </CardContent>

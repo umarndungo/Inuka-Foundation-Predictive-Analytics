@@ -36,11 +36,25 @@ logger = logging.getLogger(__name__)
 TELEMETRY_TOPIC = "beneficiary.telemetry"
 ALERTS_TOPIC = "system.alerts"
 DEFAULT_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP", "localhost:19092")
-DEFAULT_DSN = os.getenv(
-    "DATABASE_URL",
-    "postgresql://inuka:inuka@localhost:5433/inuka_risk_radar",
-)
 DEFAULT_GROUP = os.getenv("KAFKA_GROUP_ID", "inuka-bronze-writer")
+
+
+def _sync_dsn() -> str:
+    """psycopg2 DSN — prefer DATABASE_URL_SYNC; strip asyncpg from DATABASE_URL."""
+    sync = os.getenv("DATABASE_URL_SYNC")
+    if sync:
+        return sync
+    raw = os.getenv(
+        "DATABASE_URL",
+        "postgresql://inuka:inuka@localhost:5433/inuka_risk_radar",
+    )
+    return (
+        raw.replace("postgresql+asyncpg://", "postgresql://")
+        .replace("postgres+asyncpg://", "postgresql://")
+    )
+
+
+DEFAULT_DSN = _sync_dsn()
 
 INSERT_SQL = """
 INSERT INTO bronze.telemetry_events (

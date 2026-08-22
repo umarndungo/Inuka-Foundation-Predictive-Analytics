@@ -2,25 +2,25 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltipContent,
   ChartLegendContent,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
+  Area,
+  AreaChart,
 } from "@/components/ui/chart";
 import type { DemandForecast } from "@/types";
 import { formatDate } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Target, Calendar } from "lucide-react";
+import { Target, Sparkles } from "lucide-react";
 
 interface DemandForecastChartProps {
   data: DemandForecast;
@@ -29,8 +29,8 @@ interface DemandForecastChartProps {
 }
 
 const CHART_CONFIG: ChartConfig = {
-  historical: { label: "Historical", color: "var(--muted-foreground)" },
-  predicted: { label: "Predicted", color: "var(--primary)" },
+  historical: { label: "Historical Baseline", color: "#71717A" },
+  predicted: { label: "AI Forecast Demand", color: "var(--primary)" },
 };
 
 function buildChartData(data: DemandForecast, showPoints: number) {
@@ -50,51 +50,8 @@ function buildChartData(data: DemandForecast, showPoints: number) {
   return chartData;
 }
 
-function ForecastLineChart({ data, className }: { data: ReturnType<typeof buildChartData>; className?: string }) {
-  return (
-    <ChartContainer config={CHART_CONFIG} className={cn("h-full aspect-auto", className)}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="4 4" vertical={false} />
-        <XAxis
-          dataKey="date"
-          tickFormatter={(value) => formatDate(value)}
-          tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          domain={["auto", "auto"]}
-          tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
-          tickLine={false}
-          axisLine={false}
-          orientation="left"
-          width={40}
-        />
-        <Tooltip content={<ChartTooltipContent />} />
-        <Line
-          type="monotone"
-          dataKey="historical"
-          stroke="var(--color-historical)"
-          strokeWidth={2}
-          strokeDasharray="4 4"
-          dot={false}
-          connectNulls={false}
-        />
-        <Line
-          type="monotone"
-          dataKey="predicted"
-          stroke="var(--color-predicted)"
-          strokeWidth={2}
-          dot={false}
-          connectNulls={false}
-        />
-      </LineChart>
-    </ChartContainer>
-  );
-}
-
 export function DemandForecastChart({ data, className, compact = false }: DemandForecastChartProps) {
-  const [range, setRange] = useState<"7d" | "14d" | "30d">("7d");
+  const [range, setRange] = useState<"7d" | "14d" | "30d">("14d");
 
   const daysMap = { "7d": 7, "14d": 14, "30d": 30 };
   const days = daysMap[range];
@@ -105,72 +62,74 @@ export function DemandForecastChart({ data, className, compact = false }: Demand
   const expectedChange = data.summary.expectedChange;
   const isPositive = expectedChange >= 0;
 
-  if (compact) {
-    return (
-      <Card className={cn(className)}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Demand Forecast</CardTitle>
-            <Badge variant={isPositive ? "default" : "secondary"} className="gap-1">
-              {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {isPositive ? "+" : ""}
-              {expectedChange.toFixed(1)}%
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="h-48 px-2 pb-2">
-            <ForecastLineChart data={chartData} />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader className="pb-3">
+    <Card className={cn("h-full flex flex-col border-none shadow-none rounded-md bg-card overflow-hidden", className)}>
+      <CardHeader className="p-3.5 border-b border-border/40 bg-secondary/20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <CardTitle className="text-base">Demand Forecast</CardTitle>
+          <div>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 font-mono uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-primary" />
+              Resource Allocation & Kit Demand Forecast
+            </CardTitle>
+            <CardDescription className="text-xs">
+              AI-driven predictive demand modeling for field kit distribution and staff deployment.
+            </CardDescription>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={isPositive ? "default" : "secondary"} className="gap-1">
-              {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {isPositive ? "+" : ""}
-              {expectedChange.toFixed(1)}% expected change
-            </Badge>
-            <Badge variant="outline" className="gap-1">
-              <Target className="w-3 h-3" />
-              {data.summary.confidence}% confidence
-            </Badge>
-            <Badge variant="outline" className="gap-1">
-              <Calendar className="w-3 h-3" />
-              Peak: {formatDate(data.summary.peakDay)}
-            </Badge>
+            <StatusBadge
+              status={isPositive ? "high" : "low"}
+              label={`${isPositive ? "+" : ""}${expectedChange.toFixed(1)}% Demand Surge`}
+              showDot={isPositive}
+              size="sm"
+            />
+
+            <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border/40 flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5 text-primary" />
+              {data.summary.confidence}% Confidence
+            </span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {(["7d", "14d", "30d"] as const).map((key) => (
-            <Button
-              key={key}
-              variant={range === key ? "default" : "ghost"}
-              size="sm"
-              className="h-8 px-3 text-xs"
-              onClick={() => setRange(key)}
-            >
-              {key === "7d" ? "7 days" : key === "14d" ? "14 days" : "30 days"}
-            </Button>
-          ))}
+
+        <div className="flex items-center justify-between pt-2.5">
+          <div className="flex gap-1 bg-secondary/60 p-0.5 rounded border border-border/40">
+            {(["7d", "14d", "30d"] as const).map((key) => (
+              <Button
+                key={key}
+                variant={range === key ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-6 px-2 text-xs font-mono font-medium rounded transition-colors cursor-pointer",
+                  range === key && "bg-background text-foreground shadow-none border border-border/40"
+                )}
+                onClick={() => setRange(key)}
+              >
+                {key === "7d" ? "7 Days" : key === "14d" ? "14 Days" : "30 Days"}
+              </Button>
+            ))}
+          </div>
+
+          <span className="hidden md:inline text-xs text-muted-foreground font-mono">
+            Peak Demand: <strong className="text-foreground">{formatDate(data.summary.peakDay)}</strong>
+          </span>
         </div>
       </CardHeader>
-      <CardContent className="flex-1">
-        <div className="relative h-64 mb-4">
-          <ChartContainer config={CHART_CONFIG} className="h-full aspect-auto">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="4 4" vertical={false} />
+
+      <CardContent className="p-4 flex-1 space-y-5">
+        <div className="w-full h-72 min-h-[280px]">
+          <ChartContainer config={CHART_CONFIG} className="w-full h-full">
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="predictedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.6} />
               <XAxis
                 dataKey="date"
                 tickFormatter={(value) => formatDate(value)}
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "var(--font-mono)" }}
                 tickLine={false}
                 axisLine={false}
               />
@@ -179,65 +138,58 @@ export function DemandForecastChart({ data, className, compact = false }: Demand
                 tickFormatter={(value) =>
                   value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value))
                 }
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "var(--font-mono)" }}
                 tickLine={false}
                 axisLine={false}
                 orientation="left"
-                width={45}
+                width={36}
               />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Legend content={<ChartLegendContent className="flex flex-wrap gap-4 justify-center" />} />
-              <Line
+              <Tooltip content={<ChartTooltipContent className="font-mono text-xs rounded border border-border/40 shadow-none" />} />
+              <Legend content={<ChartLegendContent className="flex flex-wrap gap-4 justify-center pt-2 text-xs font-mono" />} />
+              <Area
                 type="monotone"
                 dataKey="historical"
-                stroke="var(--color-historical)"
-                strokeWidth={2}
+                stroke="#71717A"
+                strokeWidth={1.5}
                 strokeDasharray="4 4"
+                fill="transparent"
                 dot={false}
                 connectNulls={false}
               />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="predicted"
-                stroke="var(--color-predicted)"
+                stroke="#EF4444"
                 strokeWidth={2}
-                dot={false}
+                fill="url(#predictedGrad)"
+                dot={{ r: 2.5, fill: "#EF4444" }}
                 connectNulls={false}
               />
-            </LineChart>
+            </AreaChart>
           </ChartContainer>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs text-muted-foreground">Historical Avg</p>
-            <p className="text-2xl font-bold">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-1">
+          <div className="p-2.5 rounded bg-secondary/50 border border-border/40 text-xs space-y-0.5">
+            <span className="text-muted-foreground block text-[11px] font-mono">Historical Baseline</span>
+            <span className="text-lg font-bold font-sans text-foreground">
               {Math.round(data.historical.reduce((a, b) => a + b, 0) / data.historical.length).toLocaleString()}
-            </p>
+            </span>
           </div>
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs text-muted-foreground">Predicted Avg</p>
-            <p className="text-2xl font-bold text-primary">
+          <div className="p-2.5 rounded bg-red-500/10 border border-red-500/20 text-xs space-y-0.5">
+            <span className="text-primary font-semibold font-mono block text-[11px]">Predicted Peak</span>
+            <span className="text-lg font-bold font-sans text-primary">
               {Math.round(data.predicted.reduce((a, b) => a + b, 0) / data.predicted.length).toLocaleString()}
-            </p>
+            </span>
           </div>
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs text-muted-foreground">Confidence</p>
-            <p className="text-2xl font-bold">{data.summary.confidence}%</p>
+          <div className="p-2.5 rounded bg-secondary/50 border border-border/40 text-xs space-y-0.5">
+            <span className="text-muted-foreground block text-[11px] font-mono">Model Confidence</span>
+            <span className="text-lg font-bold font-sans text-foreground">{data.summary.confidence}%</span>
           </div>
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs text-muted-foreground">Peak Day</p>
-            <p className="text-2xl font-bold">{formatDate(data.summary.peakDay)}</p>
+          <div className="p-2.5 rounded bg-secondary/50 border border-border/40 text-xs space-y-0.5">
+            <span className="text-muted-foreground block text-[11px] font-mono">Peak Demand Date</span>
+            <span className="text-xs font-bold font-sans text-foreground truncate block">{formatDate(data.summary.peakDay)}</span>
           </div>
-        </div>
-
-        <div className="mt-4 p-3 rounded-lg bg-muted/50">
-          <p className="text-sm text-muted-foreground">
-            <strong>Forecast Summary:</strong> Demand is expected to {isPositive ? "increase" : "decrease"} by{" "}
-            <strong>{Math.abs(expectedChange).toFixed(1)}%</strong> over the next {days} days, with the highest
-            concentration projected for <strong>{formatDate(data.summary.peakDay)}</strong>. Model confidence:{" "}
-            <strong>{data.summary.confidence}%</strong>.
-          </p>
         </div>
       </CardContent>
     </Card>

@@ -1,4 +1,4 @@
-# Inuka Sentinel — GitHub Collaboration Guide
+# Inuka Risk Radar — GitHub Collaboration Guide
 **Purpose:** Practical rules for the 5-person team to avoid merge conflicts during the 72-hour sprint. This is not general Git theory — it's specific to this repo's file ownership boundaries and the shared files everyone touches.
 
 ---
