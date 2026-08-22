@@ -6,6 +6,8 @@ import { HighRiskBeneficiaries } from "@/components/dashboard/HighRiskBeneficiar
 import { StatusBadge } from "@/components/ui/status-badge";
 import { api } from "@/lib/api";
 
+export const dynamic = "force-dynamic";
+
 export default async function RiskRadarPage() {
   const [riskDistribution, beneficiariesRes] = await Promise.all([
     api.getRiskDistribution(),
@@ -17,7 +19,7 @@ export default async function RiskRadarPage() {
       <div className="space-y-6">
         <PageHeader
           title="Risk Radar & Dropout Prevention Hub"
-          description="Inuka Sentinel Predictive Engine — Monitor drop-out indicators, examine risk drivers, evaluate live scoring simulations, and trigger emergency field interventions."
+          description="Inuka Risk Radar Predictive Engine — Monitor drop-out indicators, examine risk drivers, evaluate live scoring simulations, and trigger emergency field interventions."
         >
           <div className="flex items-center gap-3">
             <StatusBadge

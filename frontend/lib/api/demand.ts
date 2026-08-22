@@ -16,7 +16,7 @@ export async function getDemandForecast(region?: string, days = 7): Promise<Dema
   if (region) params.append("region", region);
   params.append("days", String(days));
 
-  const res = await fetch(`${API_BASE}/api/v1/demand?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/api/v1/demand?${params.toString()}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch demand forecast");
   return res.json();
 }
@@ -34,7 +34,19 @@ export async function getRegionalDemandBreakdown(): Promise<RegionalDemandForeca
     }));
   }
 
-  const res = await fetch(`${API_BASE}/api/v1/demand/breakdown`);
-  if (!res.ok) throw new Error("Failed to fetch regional demand breakdown");
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/demand/breakdown`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch regional demand breakdown");
+    return res.json();
+  } catch {
+    const { mockRegionalForecasts } = await import("@/lib/mock/data");
+    return Object.values(mockRegionalForecasts).map((forecast) => ({
+      region: forecast.region,
+      predicted_demand: forecast.predicted[forecast.predicted.length - 1],
+      historical_trend: forecast.historical,
+      risk_factor: Number((forecast.summary.expectedChange / 100).toFixed(2)),
+      dates: forecast.dates,
+      summary: forecast.summary,
+    }));
+  }
 }
