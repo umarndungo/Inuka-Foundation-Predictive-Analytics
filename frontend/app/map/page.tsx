@@ -13,7 +13,7 @@ export default async function MapPage() {
   const [mapRegions, fieldWorkers, beneficiariesRes] = await Promise.all([
     api.getMapRegions(),
     api.getFieldWorkers(),
-    api.getBeneficiaries({ pageSize: 500 }),
+    api.getBeneficiaries({ pageSize: 1000 }),
   ]);
 
   const activeWorkers = fieldWorkers.filter((w) => w.isOnline);

@@ -13,6 +13,7 @@ import { Shield } from "lucide-react";
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { setSystemStatus } = useAppStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeAlertsCount, setActiveAlertsCount] = useState(0);
 
   useEffect(() => {
     // Force light theme
@@ -20,18 +21,22 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
-    const loadSystemStatus = async () => {
+    const loadLayoutData = async () => {
       try {
-        const status = await api.getSystemStatus();
+        const [status, alerts] = await Promise.all([
+          api.getSystemStatus(),
+          api.getAlerts({ limit: 200 }),
+        ]);
         if (!cancelled) {
           setSystemStatus(status);
+          setActiveAlertsCount(alerts.filter((alert) => alert.status !== "resolved").length);
         }
       } catch {
-        // Leave system status unset on failure; downstream UI should treat null as unknown.
+        // Leave layout-level status/count unset on failure; downstream UI should treat missing values as unknown.
       }
     };
 
-    loadSystemStatus();
+    loadLayoutData();
 
     return () => {
       cancelled = true;
@@ -40,7 +45,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar />
+      <Sidebar activeAlertsCount={activeAlertsCount} />
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-64 p-0 gap-0 border-r border-border bg-card">
@@ -59,7 +64,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             </Link>
           </div>
           <div className="flex flex-col h-[calc(100%-3.5rem)] overflow-y-auto">
-            <SidebarNav onNavigate={() => setMobileMenuOpen(false)} />
+            <SidebarNav onNavigate={() => setMobileMenuOpen(false)} activeAlertsCount={activeAlertsCount} />
           </div>
         </SheetContent>
       </Sheet>

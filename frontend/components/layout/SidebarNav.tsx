@@ -18,7 +18,7 @@ export const navigation = [
   { name: "Demand Forecasts", href: "/forecasts", icon: TrendingUp, group: "Analytics", badge: "Live" },
   { name: "Risk Radar", href: "/risk", icon: ShieldAlert, group: "Analytics" },
   { name: "Beneficiaries", href: "/beneficiaries", icon: Users, group: "Field Operations" },
-  { name: "Early Warning Alerts", href: "/alerts", icon: AlertTriangle, group: "Field Operations", badge: "3" },
+  { name: "Early Warning Alerts", href: "/alerts", icon: AlertTriangle, group: "Field Operations" },
   { name: "Geospatial Map", href: "/map", icon: Map, group: "Field Operations" },
 ] as const;
 
@@ -28,9 +28,10 @@ interface SidebarNavProps {
   collapsed?: boolean;
   onNavigate?: () => void;
   showFooter?: boolean;
+  activeAlertsCount?: number;
 }
 
-export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }: SidebarNavProps) {
+export function SidebarNav({ collapsed = false, onNavigate, showFooter = true, activeAlertsCount = 0 }: SidebarNavProps) {
   const pathname = usePathname();
 
   return (
@@ -51,6 +52,9 @@ export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }:
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                const badgeLabel = item.href === "/alerts"
+                  ? (activeAlertsCount > 0 ? String(activeAlertsCount) : null)
+                  : ("badge" in item ? item.badge : null);
 
                 return (
                   <Link
@@ -77,7 +81,7 @@ export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }:
                       {!collapsed && <span className="truncate">{item.name}</span>}
                     </div>
 
-                    {!collapsed && "badge" in item && item.badge && (
+                    {!collapsed && badgeLabel && (
                       <span
                         className={cn(
                           "px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded",
@@ -86,7 +90,7 @@ export function SidebarNav({ collapsed = false, onNavigate, showFooter = true }:
                             : "bg-secondary text-muted-foreground border border-border"
                         )}
                       >
-                        {item.badge}
+                        {badgeLabel}
                       </span>
                     )}
                   </Link>
