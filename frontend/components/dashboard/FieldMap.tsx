@@ -42,25 +42,37 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
   const [showBeneficiaries, setShowBeneficiaries] = useState(true);
   const [showFieldWorkers, setShowFieldWorkers] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   const initializeMap = useCallback(() => {
     if (mapRef.current || !mapContainerRef.current) return;
 
-    const map = new Map({
-      container: mapContainerRef.current,
-      style: "https://demotiles.maplibre.org/style.json",
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      attributionControl: false,
-    });
+    setMapError(null);
+    setMapLoaded(false);
 
-    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
-    map.addControl(new ScaleControl({ unit: "metric" }), "bottom-right");
+    try {
+      const map = new Map({
+        container: mapContainerRef.current,
+        style: "https://demotiles.maplibre.org/style.json",
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        attributionControl: false,
+      });
 
-    map.on("load", () => {
-      setMapLoaded(true);
+      const loadTimeout = window.setTimeout(() => {
+        setMapError("Map tiles did not finish loading. This usually means the browser could not reach the external MapLibre demo tile service.");
+        setMapLoaded(false);
+      }, 10000);
 
-      mapRegions.forEach((region) => {
+      map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+      map.addControl(new ScaleControl({ unit: "metric" }), "bottom-right");
+
+      map.on("load", () => {
+        window.clearTimeout(loadTimeout);
+        setMapError(null);
+        setMapLoaded(true);
+
+        mapRegions.forEach((region) => {
         const el = document.createElement("div");
         el.className = "region-marker";
         const tier = getRiskTier(region.riskScore);
@@ -92,12 +104,22 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
       if (showBeneficiaries) {
         addBeneficiaryMarkers(map);
       }
-      if (showFieldWorkers) {
-        addFieldWorkerMarkers(map);
-      }
-    });
+        if (showFieldWorkers) {
+          addFieldWorkerMarkers(map);
+        }
+      });
 
-    mapRef.current = map;
+      map.on("error", () => {
+        window.clearTimeout(loadTimeout);
+        setMapError("Map resources failed to load. The rest of the page is still available, but the live basemap could not be rendered.");
+        setMapLoaded(false);
+      });
+
+      mapRef.current = map;
+    } catch {
+      setMapError("Map initialization failed in the browser.");
+      setMapLoaded(false);
+    }
   }, [beneficiaries, mapRegions, showBeneficiaries, showFieldWorkers]);
 
   const addBeneficiaryMarkers = (map: Map) => {
@@ -156,6 +178,7 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
       mapRef.current?.remove();
       mapRef.current = null;
       setMapLoaded(false);
+      setMapError(null);
     };
   }, [initializeMap]);
 
@@ -210,11 +233,20 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
       <CardContent className="flex-1 p-0 relative min-h-[380px]">
         <div ref={mapContainerRef} className="w-full h-full min-h-[380px]" />
 
-        {!mapLoaded && (
+        {!mapLoaded && !mapError && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
             <div className="flex flex-col items-center gap-2 text-muted-foreground text-xs">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               <p className="font-medium">Loading Map Tiles...</p>
+            </div>
+          </div>
+        )}
+
+        {mapError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-10 p-6">
+            <div className="max-w-md text-center space-y-3">
+              <p className="text-sm font-semibold text-foreground">Map unavailable</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{mapError}</p>
             </div>
           </div>
         )}

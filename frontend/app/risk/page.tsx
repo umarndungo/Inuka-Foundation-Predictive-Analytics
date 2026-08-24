@@ -35,11 +35,14 @@ export default async function RiskRadarPage() {
           </div>
         </PageHeader>
 
-        {/* Live Evaluator and Risk Distribution Split */}
+        {/* Live Evaluator intentionally hidden from the main risk experience.
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RiskEvaluatorCard />
           <RiskDistributionChart data={riskDistribution} />
         </div>
+        */}
+
+        <RiskDistributionChart data={riskDistribution} />
 
         {/* High Risk Directory Table */}
         <BeneficiariesTable
