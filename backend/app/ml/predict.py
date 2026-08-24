@@ -127,7 +127,7 @@ def score_beneficiary(payload: dict[str, Any], model_path: Path | None = None) -
     """
     artifact = _load_artifact(model_path or DEFAULT_MODEL)
     pipeline = artifact["pipeline"]
-    threshold = float(artifact.get("automation_threshold", 0.75))
+    threshold = float(artifact.get("automation_threshold", 0.65))
 
     if not payload.get("beneficiary_id"):
         raise ValueError("beneficiary_id is required")
