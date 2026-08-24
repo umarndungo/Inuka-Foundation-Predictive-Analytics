@@ -10,12 +10,13 @@ import { MapPin } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function MapPage() {
-  const [mapRegions, fieldWorkers, beneficiariesRes] = await Promise.all([
+  const [mapRegions, fieldWorkers, beneficiariesResult] = await Promise.all([
     api.getMapRegions(),
     api.getFieldWorkers(),
-    api.getBeneficiaries({ pageSize: 1000 }),
+    api.getBeneficiaries({ pageSize: 500 }).catch(() => null),
   ]);
 
+  const beneficiaries = beneficiariesResult?.items ?? [];
   const activeWorkers = fieldWorkers.filter((w) => w.isOnline);
 
   return (
@@ -34,7 +35,7 @@ export default async function MapPage() {
         <FieldMap
           mapRegions={mapRegions}
           fieldWorkers={fieldWorkers}
-          beneficiaries={beneficiariesRes.items}
+          beneficiaries={beneficiaries}
         />
 
         {/* Regional Hub Operations Grid */}

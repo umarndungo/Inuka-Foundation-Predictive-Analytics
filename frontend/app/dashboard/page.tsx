@@ -69,8 +69,9 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* Interactive Predictive Evaluator */}
+        {/* Interactive Predictive Evaluator intentionally hidden from the main dashboard experience.
         <RiskEvaluatorCard />
+        */}
 
         {/* Demand Forecast Section */}
         <DemandForecastChart data={demandForecast} />

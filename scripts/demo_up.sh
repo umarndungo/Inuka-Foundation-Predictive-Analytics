@@ -109,7 +109,7 @@ exec_backend() {
 }
 
 produce_batch() {
-  local count="${1:-50}"
+  local count="${1:-500}"
   local rate="${2:-10}"
   echo "Publishing $count telemetry events @ ~${rate}/s using original synthetic timestamps…"
   exec_backend python /workspace/data-pipeline/scripts/kafka_producer_sim.py \
