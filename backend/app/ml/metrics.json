@@ -2,8 +2,9 @@
   "dataset": {
     "records": 500,
     "features": 8,
-    "dropout_rate": 0.23,
-    "synthetic": true
+    "dropout_rate": 0.204,
+    "synthetic": true,
+    "scale_pos_weight": 3.9019607843137254
   },
   "split": {
     "test_size": 0.25,
@@ -15,115 +16,115 @@
   "cross_validation": {
     "logistic_regression": {
       "roc_auc": {
-        "mean": 0.7206805609922937,
-        "std": 0.0269888087219793,
+        "mean": 0.7235555555555556,
+        "std": 0.06540725404784574,
         "folds": [
-          0.7261208576998052,
-          0.6997971602434077,
-          0.7454361054766734,
-          0.7515212981744421,
-          0.68052738336714
+          0.666313559322034,
+          0.833686440677966,
+          0.6588888888888889,
+          0.7588888888888888,
+          0.7000000000000001
         ]
       },
       "pr_auc": {
-        "mean": 0.5043648296533552,
-        "std": 0.02294304732194278,
+        "mean": 0.4697275088146743,
+        "std": 0.07422275431887917,
         "folds": [
-          0.5454753712134696,
-          0.5059393380533507,
-          0.49624460372321066,
-          0.4753338049809317,
-          0.4988310302958136
+          0.3495411342689569,
+          0.5766255127771143,
+          0.46845331302684246,
+          0.5049862889508494,
+          0.44903129504960804
         ]
       },
       "precision": {
-        "mean": 0.3915885563711651,
-        "std": 0.02584768274693371,
+        "mean": 0.3524391176845595,
+        "std": 0.034812636199032944,
         "folds": [
-          0.36363636363636365,
-          0.39285714285714285,
-          0.43478260869565216,
-          0.36666666666666664,
-          0.4
+          0.3333333333333333,
+          0.3939393939393939,
+          0.34782608695652173,
+          0.3870967741935484,
+          0.3
         ]
       },
       "recall": {
-        "mean": 0.6274509803921569,
-        "std": 0.03281019711898334,
+        "mean": 0.6866666666666666,
+        "std": 0.1092715780877067,
         "folds": [
-          0.6666666666666666,
-          0.6470588235294118,
-          0.5882352941176471,
-          0.6470588235294118,
-          0.5882352941176471
+          0.6875,
+          0.8125,
+          0.5333333333333333,
+          0.8,
+          0.6
         ]
       },
       "f1": {
-        "mean": 0.48075054135129225,
-        "std": 0.01201044762295036,
+        "mean": 0.46447671974968474,
+        "std": 0.05279384653687691,
         "folds": [
-          0.47058823529411764,
-          0.4888888888888889,
-          0.5,
-          0.46808510638297873,
-          0.47619047619047616
+          0.4489795918367347,
+          0.5306122448979592,
+          0.42105263157894735,
+          0.5217391304347826,
+          0.4
         ]
       }
     },
     "xgboost": {
       "roc_auc": {
-        "mean": 0.6456306418514168,
-        "std": 0.051548478150401214,
+        "mean": NaN,
+        "std": NaN,
         "folds": [
-          0.5760233918128654,
-          0.6774847870182555,
-          0.7058823529411765,
-          0.6764705882352942,
-          0.5922920892494928
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
         ]
       },
       "pr_auc": {
-        "mean": 0.4149933499752108,
-        "std": 0.060626057829698536,
+        "mean": NaN,
+        "std": NaN,
         "folds": [
-          0.31144611914594167,
-          0.3944884706353001,
-          0.4773667136957714,
-          0.47268923979365124,
-          0.4189762066053896
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
         ]
       },
       "precision": {
-        "mean": 0.466060606060606,
-        "std": 0.09507548593465963,
+        "mean": 0.46549019607843134,
+        "std": 0.1472025268817122,
         "folds": [
-          0.36363636363636365,
-          0.4666666666666667,
-          0.625,
-          0.5,
-          0.375
+          0.3333333333333333,
+          0.7,
+          0.45454545454545453,
+          0.29411764705882354,
+          0.5454545454545454
         ]
       },
       "recall": {
-        "mean": 0.3032679738562092,
-        "std": 0.09620062479986456,
+        "mean": 0.3508333333333333,
+        "std": 0.06435578192102608,
         "folds": [
-          0.2222222222222222,
-          0.4117647058823529,
-          0.29411764705882354,
-          0.4117647058823529,
-          0.17647058823529413
+          0.25,
+          0.4375,
+          0.3333333333333333,
+          0.3333333333333333,
+          0.4
         ]
       },
       "f1": {
-        "mean": 0.36099499443826477,
-        "std": 0.08657183769166907,
+        "mean": 0.39656593406593404,
+        "std": 0.09365231093548916,
         "folds": [
-          0.27586206896551724,
-          0.4375,
-          0.4,
-          0.45161290322580644,
-          0.24
+          0.2857142857142857,
+          0.5384615384615384,
+          0.38461538461538464,
+          0.3125,
+          0.46153846153846156
         ]
       }
     }
@@ -131,336 +132,248 @@
   "test_metrics": {
     "logistic_regression": {
       "threshold": 0.5,
-      "precision": 0.34615384615384615,
-      "recall": 0.6206896551724138,
-      "f1": 0.4444444444444444,
-      "roc_auc": 0.7126436781609194,
-      "pr_auc": 0.4627542287186622,
+      "precision": 0.42857142857142855,
+      "recall": 0.84,
+      "f1": 0.5675675675675675,
+      "roc_auc": 0.806,
+      "pr_auc": 0.47889511777009053,
+      "brier_score": 0.19065061969929428,
       "confusion_matrix": [
         [
-          62,
-          34
+          72,
+          28
         ],
         [
-          11,
-          18
+          4,
+          21
         ]
       ],
-      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.85      0.65      0.73        96\n           1       0.35      0.62      0.44        29\n\n    accuracy                           0.64       125\n   macro avg       0.60      0.63      0.59       125\nweighted avg       0.73      0.64      0.67       125\n",
-      "positive_prediction_rate": 0.416
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.95      0.72      0.82       100\n           1       0.43      0.84      0.57        25\n\n    accuracy                           0.74       125\n   macro avg       0.69      0.78      0.69       125\nweighted avg       0.84      0.74      0.77       125\n",
+      "positive_prediction_rate": 0.392
     },
     "xgboost": {
       "threshold": 0.5,
-      "precision": 0.4166666666666667,
-      "recall": 0.3448275862068966,
-      "f1": 0.37735849056603776,
-      "roc_auc": 0.6426005747126436,
-      "pr_auc": 0.36298000549540016,
+      "precision": 0.36666666666666664,
+      "recall": 0.44,
+      "f1": 0.4,
+      "roc_auc": 0.6856,
+      "pr_auc": 0.38462142521216514,
+      "brier_score": 0.19474118947982788,
       "confusion_matrix": [
         [
-          82,
-          14
+          81,
+          19
         ],
         [
-          19,
-          10
+          14,
+          11
         ]
       ],
-      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.81      0.85      0.83        96\n           1       0.42      0.34      0.38        29\n\n    accuracy                           0.74       125\n   macro avg       0.61      0.60      0.60       125\nweighted avg       0.72      0.74      0.73       125\n",
-      "positive_prediction_rate": 0.192
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.85      0.81      0.83       100\n           1       0.37      0.44      0.40        25\n\n    accuracy                           0.74       125\n   macro avg       0.61      0.62      0.62       125\nweighted avg       0.76      0.74      0.74       125\n",
+      "positive_prediction_rate": 0.24
     }
   },
   "operational_threshold_metrics": {
     "logistic_regression": {
       "threshold": 0.75,
-      "precision": 0.5,
-      "recall": 0.3793103448275862,
-      "f1": 0.43137254901960786,
-      "roc_auc": 0.7126436781609194,
-      "pr_auc": 0.4627542287186622,
-      "confusion_matrix": [
-        [
-          85,
-          11
-        ],
-        [
-          18,
-          11
-        ]
-      ],
-      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.83      0.89      0.85        96\n           1       0.50      0.38      0.43        29\n\n    accuracy                           0.77       125\n   macro avg       0.66      0.63      0.64       125\nweighted avg       0.75      0.77      0.76       125\n",
-      "positive_prediction_rate": 0.176
-    },
-    "xgboost": {
-      "threshold": 0.75,
-      "precision": 0.4,
-      "recall": 0.06896551724137931,
-      "f1": 0.11764705882352941,
-      "roc_auc": 0.6426005747126436,
-      "pr_auc": 0.36298000549540016,
+      "precision": 0.5625,
+      "recall": 0.36,
+      "f1": 0.43902439024390244,
+      "roc_auc": 0.806,
+      "pr_auc": 0.47889511777009053,
+      "brier_score": 0.19065061969929428,
       "confusion_matrix": [
         [
           93,
-          3
+          7
         ],
         [
-          27,
-          2
+          16,
+          9
         ]
       ],
-      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.78      0.97      0.86        96\n           1       0.40      0.07      0.12        29\n\n    accuracy                           0.76       125\n   macro avg       0.59      0.52      0.49       125\nweighted avg       0.69      0.76      0.69       125\n",
-      "positive_prediction_rate": 0.04
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.85      0.93      0.89       100\n           1       0.56      0.36      0.44        25\n\n    accuracy                           0.82       125\n   macro avg       0.71      0.65      0.66       125\nweighted avg       0.80      0.82      0.80       125\n",
+      "positive_prediction_rate": 0.128
+    },
+    "xgboost": {
+      "threshold": 0.75,
+      "precision": 0.375,
+      "recall": 0.24,
+      "f1": 0.2926829268292683,
+      "roc_auc": 0.6856,
+      "pr_auc": 0.38462142521216514,
+      "brier_score": 0.19474118947982788,
+      "confusion_matrix": [
+        [
+          90,
+          10
+        ],
+        [
+          19,
+          6
+        ]
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.83      0.90      0.86       100\n           1       0.38      0.24      0.29        25\n\n    accuracy                           0.77       125\n   macro avg       0.60      0.57      0.58       125\nweighted avg       0.74      0.77      0.75       125\n",
+      "positive_prediction_rate": 0.128
     }
+  },
+  "optimal_thresholds": {
+    "logistic_regression": 0.5031461418558683,
+    "xgboost": 0.10667651146650314
   },
   "threshold_analysis": {
     "logistic_regression": [
       {
         "threshold": 0.3,
-        "precision": 0.2891566265060241,
-        "recall": 0.8275862068965517,
-        "f1": 0.42857142857142855,
-        "positive_prediction_rate": 0.664
+        "precision": 0.27380952380952384,
+        "recall": 0.92,
+        "f1": 0.42201834862385323,
+        "positive_prediction_rate": 0.672
       },
       {
         "threshold": 0.4,
-        "precision": 0.30985915492957744,
-        "recall": 0.7586206896551724,
-        "f1": 0.44,
-        "positive_prediction_rate": 0.568
+        "precision": 0.359375,
+        "recall": 0.92,
+        "f1": 0.5168539325842697,
+        "positive_prediction_rate": 0.512
       },
       {
         "threshold": 0.45,
-        "precision": 0.32786885245901637,
-        "recall": 0.6896551724137931,
-        "f1": 0.4444444444444444,
-        "positive_prediction_rate": 0.488
+        "precision": 0.375,
+        "recall": 0.84,
+        "f1": 0.5185185185185185,
+        "positive_prediction_rate": 0.448
       },
       {
         "threshold": 0.5,
-        "precision": 0.34615384615384615,
-        "recall": 0.6206896551724138,
-        "f1": 0.4444444444444444,
-        "positive_prediction_rate": 0.416
+        "precision": 0.42857142857142855,
+        "recall": 0.84,
+        "f1": 0.5675675675675675,
+        "positive_prediction_rate": 0.392
       },
       {
         "threshold": 0.55,
-        "precision": 0.3404255319148936,
-        "recall": 0.5517241379310345,
-        "f1": 0.42105263157894735,
-        "positive_prediction_rate": 0.376
+        "precision": 0.4,
+        "recall": 0.72,
+        "f1": 0.5142857142857142,
+        "positive_prediction_rate": 0.36
       },
       {
         "threshold": 0.6,
-        "precision": 0.4166666666666667,
-        "recall": 0.5172413793103449,
-        "f1": 0.46153846153846156,
-        "positive_prediction_rate": 0.288
+        "precision": 0.3939393939393939,
+        "recall": 0.52,
+        "f1": 0.4482758620689655,
+        "positive_prediction_rate": 0.264
       },
       {
         "threshold": 0.65,
-        "precision": 0.4827586206896552,
-        "recall": 0.4827586206896552,
-        "f1": 0.4827586206896552,
-        "positive_prediction_rate": 0.232
+        "precision": 0.4444444444444444,
+        "recall": 0.48,
+        "f1": 0.46153846153846156,
+        "positive_prediction_rate": 0.216
       },
       {
         "threshold": 0.7,
-        "precision": 0.48,
-        "recall": 0.41379310344827586,
-        "f1": 0.4444444444444444,
-        "positive_prediction_rate": 0.2
+        "precision": 0.5555555555555556,
+        "recall": 0.4,
+        "f1": 0.46511627906976744,
+        "positive_prediction_rate": 0.144
       },
       {
         "threshold": 0.75,
-        "precision": 0.5,
-        "recall": 0.3793103448275862,
-        "f1": 0.43137254901960786,
-        "positive_prediction_rate": 0.176
+        "precision": 0.5625,
+        "recall": 0.36,
+        "f1": 0.43902439024390244,
+        "positive_prediction_rate": 0.128
       }
     ],
     "xgboost": [
       {
         "threshold": 0.3,
-        "precision": 0.3142857142857143,
-        "recall": 0.3793103448275862,
-        "f1": 0.34375,
-        "positive_prediction_rate": 0.28
+        "precision": 0.3137254901960784,
+        "recall": 0.64,
+        "f1": 0.42105263157894735,
+        "positive_prediction_rate": 0.408
       },
       {
         "threshold": 0.4,
-        "precision": 0.35714285714285715,
-        "recall": 0.3448275862068966,
-        "f1": 0.3508771929824561,
-        "positive_prediction_rate": 0.224
+        "precision": 0.3409090909090909,
+        "recall": 0.6,
+        "f1": 0.43478260869565216,
+        "positive_prediction_rate": 0.352
       },
       {
         "threshold": 0.45,
-        "precision": 0.4,
-        "recall": 0.3448275862068966,
-        "f1": 0.37037037037037035,
-        "positive_prediction_rate": 0.2
+        "precision": 0.36363636363636365,
+        "recall": 0.48,
+        "f1": 0.41379310344827586,
+        "positive_prediction_rate": 0.264
       },
       {
         "threshold": 0.5,
-        "precision": 0.4166666666666667,
-        "recall": 0.3448275862068966,
-        "f1": 0.37735849056603776,
-        "positive_prediction_rate": 0.192
+        "precision": 0.36666666666666664,
+        "recall": 0.44,
+        "f1": 0.4,
+        "positive_prediction_rate": 0.24
       },
       {
         "threshold": 0.55,
-        "precision": 0.42857142857142855,
-        "recall": 0.3103448275862069,
-        "f1": 0.36,
-        "positive_prediction_rate": 0.168
+        "precision": 0.3333333333333333,
+        "recall": 0.36,
+        "f1": 0.34615384615384615,
+        "positive_prediction_rate": 0.216
       },
       {
         "threshold": 0.6,
-        "precision": 0.47368421052631576,
-        "recall": 0.3103448275862069,
-        "f1": 0.375,
-        "positive_prediction_rate": 0.152
+        "precision": 0.3333333333333333,
+        "recall": 0.32,
+        "f1": 0.32653061224489793,
+        "positive_prediction_rate": 0.192
       },
       {
         "threshold": 0.65,
-        "precision": 0.5,
-        "recall": 0.27586206896551724,
-        "f1": 0.35555555555555557,
-        "positive_prediction_rate": 0.128
+        "precision": 0.3181818181818182,
+        "recall": 0.28,
+        "f1": 0.2978723404255319,
+        "positive_prediction_rate": 0.176
       },
       {
         "threshold": 0.7,
-        "precision": 0.46153846153846156,
-        "recall": 0.20689655172413793,
-        "f1": 0.2857142857142857,
-        "positive_prediction_rate": 0.104
+        "precision": 0.3684210526315789,
+        "recall": 0.28,
+        "f1": 0.3181818181818182,
+        "positive_prediction_rate": 0.152
       },
       {
         "threshold": 0.75,
-        "precision": 0.4,
-        "recall": 0.06896551724137931,
-        "f1": 0.11764705882352941,
-        "positive_prediction_rate": 0.04
+        "precision": 0.375,
+        "recall": 0.24,
+        "f1": 0.2926829268292683,
+        "positive_prediction_rate": 0.128
       }
     ]
   },
   "selected_model": "logistic_regression",
+  "selection_criterion": "test_pr_auc",
   "feature_importances": {
-    "num__attendance_rate": -0.5229290930916881,
-    "num__travel_distance_km": 0.40100280212095724,
-    "cat__region_Nairobi": -0.37648436925315265,
-    "num__assignment_completion": -0.3721752280321834,
-    "num__socioeconomic_index": -0.3480275674657704,
-    "cat__pillar_Scholarship": -0.3041600856032833,
-    "num__historical_dropouts_in_family": 0.2854585095024541,
-    "cat__pillar_Vocational": 0.23734952519537736,
-    "num__grade_average": -0.22982977976039654,
-    "cat__region_Kisumu": 0.1692226818971031,
-    "cat__region_Mombasa": 0.16469182305599,
-    "cat__pillar_Tech": 0.11576176489602609,
-    "cat__region_Eldoret": 0.05884115237179192,
-    "cat__pillar_Plus": -0.050659995599071854,
-    "cat__region_Nakuru": -0.017980079182682383
+    "num__attendance_rate": -0.6470526218089967,
+    "num__socioeconomic_index": -0.4852220648889189,
+    "num__travel_distance_km": 0.44434121709870333,
+    "cat__region_Nakuru": -0.41159216018913525,
+    "num__assignment_completion": -0.3645014575445152,
+    "cat__region_Mombasa": 0.3542476389179492,
+    "cat__pillar_Plus": -0.3215164901890679,
+    "cat__pillar_Vocational": 0.26720723053796275,
+    "cat__region_Kisumu": -0.2662407438337529,
+    "num__grade_average": -0.25885305862137736,
+    "num__historical_dropouts_in_family": 0.2311476951170247,
+    "cat__region_Nairobi": 0.1998891361163316,
+    "cat__pillar_Scholarship": 0.1918151822810669,
+    "cat__pillar_Tech": -0.13750977754004864,
+    "cat__region_Eldoret": 0.12369227407851799
   },
   "artifacts": {
-    "model": "C:\\Users\\ADMIN\\Desktop\\Inuka-Foundation-Predictive-Analytics\\backend\\app\\ml\\model.pkl",
-    "evaluation_directory": "C:\\Users\\ADMIN\\Desktop\\Inuka-Foundation-Predictive-Analytics\\backend\\app\\ml\\evaluation"
+    "model": "C:\\Users\\chepk\\Hackathon2\\Inuka-Foundation-Predictive-Analytics\\backend\\app\\ml\\model.pkl",
+    "evaluation_directory": "C:\\Users\\chepk\\Hackathon2\\Inuka-Foundation-Predictive-Analytics\\backend\\app\\ml\\evaluation"
   }
-  "eda": {
-    "n_records": 500,
-    "dropout_rate": 0.204,
-    "at_risk_rate": 0.204,
-    "attendance_vs_dropout_corr": -0.20707626178329797,
-    "by_region": {
-      "Eldoret": {
-        "n": 106,
-        "avg_attendance": 0.7209,
-        "avg_grade": 70.0672,
-        "avg_socioeconomic": 2.9844,
-        "avg_family_dropouts": 0.6226,
-        "dropout_rate": 0.1509
-      },
-      "Kisumu": {
-        "n": 99,
-        "avg_attendance": 0.5939,
-        "avg_grade": 62.2123,
-        "avg_socioeconomic": 2.4214,
-        "avg_family_dropouts": 1.6667,
-        "dropout_rate": 0.3737
-      },
-      "Mombasa": {
-        "n": 102,
-        "avg_attendance": 0.7061,
-        "avg_grade": 70.4135,
-        "avg_socioeconomic": 3.0775,
-        "avg_family_dropouts": 0.6765,
-        "dropout_rate": 0.1863
-      },
-      "Nairobi": {
-        "n": 98,
-        "avg_attendance": 0.698,
-        "avg_grade": 69.4273,
-        "avg_socioeconomic": 3.1778,
-        "avg_family_dropouts": 0.5816,
-        "dropout_rate": 0.1837
-      },
-      "Nakuru": {
-        "n": 95,
-        "avg_attendance": 0.6765,
-        "avg_grade": 70.4572,
-        "avg_socioeconomic": 3.1144,
-        "avg_family_dropouts": 0.6316,
-        "dropout_rate": 0.1263
-      }
-    },
-    "by_pillar": {
-      "Plus": {
-        "n": 116,
-        "avg_attendance": 0.6669,
-        "dropout_rate": 0.1724
-      },
-      "Scholarship": {
-        "n": 146,
-        "avg_attendance": 0.6953,
-        "dropout_rate": 0.2397
-      },
-      "Tech": {
-        "n": 126,
-        "avg_attendance": 0.6619,
-        "dropout_rate": 0.2063
-      },
-      "Vocational": {
-        "n": 112,
-        "avg_attendance": 0.6932,
-        "dropout_rate": 0.1875
-      }
-    },
-    "headline": "Attendance vs dropped_out correlation = -0.207 (lower attendance \u2194 higher historical dropout on synthetic data)."
-  },
-  "test": {
-    "precision": 0.4,
-    "recall": 0.08,
-    "f1": 0.13333333333333333,
-    "roc_auc": 0.6784,
-    "automation_threshold": 0.75,
-    "positive_rate_at_threshold": 0.04
-  },
-  "feature_importances_top": {
-    "cat__pillar_Plus": 0.10588308423757553,
-    "num__attendance_rate": 0.09114450961351395,
-    "num__travel_distance_km": 0.0858369991183281,
-    "cat__region_Nakuru": 0.07555466890335083,
-    "cat__region_Kisumu": 0.0739193707704544,
-    "num__assignment_completion": 0.07270557433366776,
-    "cat__region_Nairobi": 0.07181326299905777,
-    "num__historical_dropouts_in_family": 0.07007090747356415,
-    "num__socioeconomic_index": 0.06859223544597626,
-    "num__grade_average": 0.0683911144733429,
-    "cat__region_Eldoret": 0.05300145968794823,
-    "cat__region_Mombasa": 0.051047202199697495
-  },
-  "classification_report": "              precision    recall  f1-score   support\n\n           0       0.81      0.97      0.88       100\n           1       0.40      0.08      0.13        25\n\n    accuracy                           0.79       125\n   macro avg       0.60      0.53      0.51       125\nweighted avg       0.73      0.79      0.73       125\n",
-  "model_path": "/workspace/backend/app/ml/model.pkl",
-  "n_train": 375,
-  "n_test": 125
 }

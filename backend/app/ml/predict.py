@@ -3,15 +3,27 @@ Inference for POST /api/v1/evaluate.
 
 Exposes score_beneficiary(payload) -> dict matching the shared API contract.
 Loads preprocessing + model from model.pkl (joblib). No training-time code here.
+
+Changes from v1:
+- Missing numeric fields now filled from train-split medians stored in the
+  artifact (previously referenced artifact["default_numeric"] which train.py
+  never wrote — silent KeyError / 0.0 fallback at inference)
+- Numeric inputs clipped to valid domain bounds and logged as warnings
+  rather than silently corrupting scores
+- optimal_threshold exposed in the response for downstream monitoring use
 """
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import joblib
+import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 ML_DIR = Path(__file__).resolve().parent
 DEFAULT_MODEL = ML_DIR / "model.pkl"
@@ -29,6 +41,17 @@ _DRIVER_RULES: list[tuple[str, str, Any]] = [
         lambda v: v is not None and int(v) >= 1,
     ),
 ]
+
+# Valid domain bounds per numeric feature.
+# Values outside these ranges are clipped with a warning.
+_FEATURE_BOUNDS: dict[str, tuple[float, float]] = {
+    "attendance_rate": (0.0, 1.0),
+    "assignment_completion": (0.0, 1.0),
+    "grade_average": (0.0, 100.0),
+    "socioeconomic_index": (0.0, 10.0),
+    "travel_distance_km": (0.0, 200.0),
+    "historical_dropouts_in_family": (0.0, 10.0),
+}
 
 _ARTIFACT: dict[str, Any] | None = None
 
@@ -100,20 +123,41 @@ def _drivers(payload: dict[str, Any], importances: dict[str, float], limit: int 
 
 
 def _row_from_payload(payload: dict[str, Any], artifact: dict[str, Any]) -> pd.DataFrame:
-    defaults = artifact.get("default_numeric", {})
+    """
+    Build a single-row DataFrame from the API payload.
+
+    Missing numeric fields are filled from train-split medians stored in
+    the artifact at training time — no leakage.
+    Out-of-bounds numeric values are clipped and a warning is logged.
+    """
+    numeric_defaults = artifact.get("default_numeric", {})
     cat_defaults = artifact.get("default_categorical", {})
     row: dict[str, Any] = {}
+
     for col in artifact["numeric_features"]:
-        if payload.get(col) is None:
-            row[col] = defaults.get(col, 0.0)
+        raw = payload.get(col)
+        if raw is None:
+            row[col] = numeric_defaults.get(col, 0.0)
         else:
-            row[col] = float(payload[col])
+            val = float(raw)
+            if col in _FEATURE_BOUNDS:
+                lo, hi = _FEATURE_BOUNDS[col]
+                clipped = float(np.clip(val, lo, hi))
+                if clipped != val:
+                    logger.warning(
+                        "Feature %s value %.4f clipped to [%.1f, %.1f]",
+                        col, val, lo, hi,
+                    )
+                val = clipped
+            row[col] = val
+
     for col in artifact.get("categorical_features", ["region"]):
         if payload.get(col) is None:
             fallback = {"region": "Nairobi", "pillar": "Scholarship"}
             row[col] = cat_defaults.get(col, fallback.get(col, "UNKNOWN"))
         else:
             row[col] = payload[col]
+
     return pd.DataFrame([row], columns=artifact["feature_columns"])
 
 
@@ -128,6 +172,7 @@ def score_beneficiary(payload: dict[str, Any], model_path: Path | None = None) -
     artifact = _load_artifact(model_path or DEFAULT_MODEL)
     pipeline = artifact["pipeline"]
     threshold = float(artifact.get("automation_threshold", 0.75))
+    optimal_threshold = float(artifact.get("optimal_threshold", 0.50))
 
     if not payload.get("beneficiary_id"):
         raise ValueError("beneficiary_id is required")
@@ -148,4 +193,5 @@ def score_beneficiary(payload: dict[str, Any], model_path: Path | None = None) -
         "drivers": drivers,
         "recommended_action": _recommended_action(tier, automation),
         "automation_triggered": automation,
+        "optimal_threshold": round(optimal_threshold, 4),
     }
