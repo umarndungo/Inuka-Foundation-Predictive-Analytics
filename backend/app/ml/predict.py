@@ -82,7 +82,10 @@ def _drivers(payload: dict[str, Any], importances: dict[str, float], limit: int 
             "pillar",
         ):
             if feat in name:
-                raw_importance[feat] = max(raw_importance.get(feat, 0.0), float(val))
+                raw_importance[feat] = max(
+                  raw_importance.get(feat, 0.0),
+                  abs(float(val))
+                )
 
     hits: list[tuple[float, str]] = []
     for feat, label, pred in _DRIVER_RULES:
