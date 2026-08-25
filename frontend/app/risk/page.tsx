@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function RiskRadarPage() {
   const [riskDistribution, beneficiariesRes] = await Promise.all([
     api.getRiskDistribution(),
-    api.getBeneficiaries({ pageSize: 200 }),
+    api.getBeneficiaries({ pageSize: 500 }),
   ]);
 
   const highRiskBeneficiaries = beneficiariesRes.items.filter(

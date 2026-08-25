@@ -75,6 +75,38 @@ services:
       retries: 10
       start_period: 10s
 
+  db-seed:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: inuka-db-seed
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://inuka:inuka@postgres:5432/inuka_risk_radar
+      KAFKA_BOOTSTRAP: redpanda:9092
+    volumes:
+      - ./data-pipeline:/workspace/data-pipeline
+    command:
+      - python
+      - /workspace/data-pipeline/scripts/seed_database.py
+      - --dsn
+      - postgresql://inuka:inuka@postgres:5432/inuka_risk_radar
+      - --kafka-bootstrap
+      - redpanda:9092
+      - --telemetry-count
+      - "500"
+      - --risk-days
+      - "30"
+      - --risk-limit
+      - "500"
+    restart: "no"
+
   backend:
     build:
       context: .
@@ -86,6 +118,8 @@ services:
       redpanda:
         condition: service_healthy
       redpanda-init:
+        condition: service_completed_successfully
+      db-seed:
         condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql+asyncpg://inuka:inuka@postgres:5432/inuka_risk_radar

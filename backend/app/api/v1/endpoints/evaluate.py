@@ -107,8 +107,7 @@ async def _persist_alert_record(
     risk_tier: str,
     region: str,
     drivers: list[str],
-    recommended_action: str,
-) -> Alert:
+    recommended_action: str,) -> Alert:
     created_at = datetime.now(timezone.utc)
     alert = Alert(
         alert_id=f"ALT-{uuid.uuid4().hex[:8].upper()}",

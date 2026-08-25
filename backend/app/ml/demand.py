@@ -151,8 +151,7 @@ def _build_forecast(region: str, daily: pd.Series, horizon_days: int) -> dict[st
 def forecast_demand_series(
     region: str | None = None,
     horizon_days: int = 7,
-    data_path: Path | None = None,
-) -> dict[str, Any]:
+    data_path: Path | None = None,) -> dict[str, Any]:
     df = _prepare_frame(data_path)
     normalized_region = _normalize_region(region)
     daily = _daily_series(df, normalized_region)
@@ -161,8 +160,7 @@ def forecast_demand_series(
 
 def forecast_regional_breakdown(
     horizon_days: int = 7,
-    data_path: Path | None = None,
-) -> list[dict[str, Any]]:
+    data_path: Path | None = None,) -> list[dict[str, Any]]:
     df = _prepare_frame(data_path)
     results: list[dict[str, Any]] = []
 
