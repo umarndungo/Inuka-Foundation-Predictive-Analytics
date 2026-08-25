@@ -61,7 +61,7 @@ export default async function BeneficiariesPage() {
         />
 
         {/* Demographic & Cohort Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <Card className="border border-border/80 shadow-2xs rounded-xl bg-card overflow-hidden">
             <CardHeader className="p-4 border-b border-border bg-secondary/20">
               <CardTitle className="text-base font-semibold">Regional Concentration</CardTitle>
@@ -70,22 +70,6 @@ export default async function BeneficiariesPage() {
               {regionalSummaries.map((summary) => (
                 <RegionCard key={summary.region} {...summary} />
               ))}
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2 border border-border/80 shadow-2xs rounded-xl bg-card overflow-hidden">
-            <CardHeader className="p-4 border-b border-border bg-secondary/20">
-              <CardTitle className="text-base font-semibold">Risk Factor Telemetry Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4 text-xs font-mono">
-              <div className="p-4 rounded-lg bg-secondary/50 border border-border/40 space-y-2">
-                <span className="font-semibold text-foreground block">Primary Field Risk Indicators:</span>
-                <ul className="space-y-1.5 text-muted-foreground list-disc list-inside">
-                  <li>Attendance Drop &gt;30% over 14 days (64% correlated with dropout)</li>
-                  <li>Device telemetry inactivity over 7 days (48% correlated with dropout)</li>
-                  <li>Displaced household status combined with remote location (82% correlated)</li>
-                </ul>
-              </div>
             </CardContent>
           </Card>
         </div>
