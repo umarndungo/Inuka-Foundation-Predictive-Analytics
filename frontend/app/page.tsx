@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 
 export default function Home() {
-  redirect("/dashboard");
+  return <OnboardingGate />;
 }

@@ -189,3 +189,11 @@ export interface RegionalDemandForecast {
     confidence: number;
   };
 }
+
+export interface OnboardingStep {
+  id: number;
+  title: string;
+  description: string;
+  type: "info";
+  bullets?: string[];
+}

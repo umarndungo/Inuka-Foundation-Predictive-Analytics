@@ -42,6 +42,9 @@ interface AppState {
   notifications: Array<{ id: string; message: string; type: "info" | "success" | "warning" | "error" }>;
   addNotification: (notification: Omit<AppState["notifications"][0], "id">) => void;
   removeNotification: (id: string) => void;
+
+  hasSeenOnboarding: boolean;
+  markOnboardingSeen: () => void;
 }
 
 const defaultFilters: FilterState = {
@@ -126,12 +129,16 @@ export const useAppStore = create<AppState>()(
         }),
       removeNotification: (id) =>
         set({ notifications: get().notifications.filter((n) => n.id !== id) }),
+
+      hasSeenOnboarding: false,
+      markOnboardingSeen: () => set({ hasSeenOnboarding: true }),
     }),
     {
       name: "inuka-sentinel-store",
       partialize: (state) => ({
         theme: state.theme,
         sidebarOpen: state.sidebarOpen,
+        hasSeenOnboarding: state.hasSeenOnboarding,
       }),
     }
   )
