@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FieldMap } from "@/components/dashboard/FieldMap";
+import { RegionCard } from "@/components/dashboard/RegionCard";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,6 +19,19 @@ export default async function MapPage() {
 
   const beneficiaries = beneficiariesResult?.items ?? [];
   const activeWorkers = fieldWorkers.filter((w) => w.isOnline);
+
+  const regionalSummaries = Object.values(
+    beneficiaries.reduce<Record<string, { region: string; count: number; highRisk: number; mediumRisk: number; lowRisk: number }>>((acc, b) => {
+      if (!acc[b.region]) {
+        acc[b.region] = { region: b.region, count: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0 };
+      }
+      acc[b.region].count += 1;
+      if (b.riskTier === "HIGH") acc[b.region].highRisk += 1;
+      else if (b.riskTier === "MEDIUM") acc[b.region].mediumRisk += 1;
+      else acc[b.region].lowRisk += 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.count - a.count);
 
   return (
     <DashboardLayout>
@@ -45,30 +59,8 @@ export default async function MapPage() {
               <CardTitle className="text-base font-semibold">Regional Operational Metrics</CardTitle>
             </CardHeader>
             <CardContent className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {mapRegions.map((region) => (
-                <div key={region.code} className="p-4 rounded-lg bg-secondary/50 border border-border/40 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <span className="font-bold text-sm text-foreground font-mono">{region.name}</span>
-                    </div>
-                    <StatusBadge
-                      status={region.riskScore >= 0.75 ? "high" : "low"}
-                      label={`Risk: ${(region.riskScore * 100).toFixed(0)}%`}
-                      size="sm"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono pt-1">
-                    <div className="p-2 rounded-md bg-background border border-border">
-                      <p className="text-muted-foreground text-[11px]">Beneficiaries</p>
-                      <p className="font-bold text-foreground text-sm">{region.beneficiaries}</p>
-                    </div>
-                    <div className="p-2 rounded-md bg-background border border-border">
-                      <p className="text-muted-foreground text-[11px]">At-Risk</p>
-                      <p className="font-bold text-primary text-sm">{region.highRisk}</p>
-                    </div>
-                  </div>
-                </div>
+              {regionalSummaries.map((summary) => (
+                <RegionCard key={summary.region} {...summary} />
               ))}
             </CardContent>
           </Card>
