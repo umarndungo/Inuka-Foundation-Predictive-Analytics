@@ -110,8 +110,16 @@ class KafkaTelemetryConsumer:
             raise ImportError(
                 "psycopg2 is required: pip install psycopg2-binary"
             ) from exc
-        self._conn = psycopg2.connect(self.dsn)
-        self._conn.autocommit = True
+        import time as _time
+        for attempt in range(1, 31):
+            try:
+                self._conn = psycopg2.connect(self.dsn)
+                self._conn.autocommit = True
+                return
+            except psycopg2.OperationalError:
+                if attempt == 30:
+                    raise
+                _time.sleep(2)
 
     def _connect_kafka(self):
         try:

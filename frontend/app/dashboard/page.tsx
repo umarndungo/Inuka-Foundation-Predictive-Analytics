@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     api.getKPIMetrics(),
     api.getRiskDistribution(),
-    api.getBeneficiaries({ pageSize: 200 }),
+    api.getBeneficiaries({ pageSize: 500 }),
     api.getDemandForecast("National", 30),
     api.getRegionalDemandBreakdown(30),
   ]);

@@ -214,7 +214,7 @@ case "$MODE" in
     ;;
   produce)
     need docker
-    produce_batch 50 10
+    produce_batch 500 10
     echo "Done."
     exit 0
     ;;
