@@ -7,7 +7,6 @@ class RiskDistributionResponse(BaseModel):
     low: int
     medium: int
     high: int
-    critical: int
     total: int
 
 
@@ -55,7 +54,6 @@ class FieldWorkerResponse(BaseModel):
 class RiskTrendPointResponse(BaseModel):
     date: str
     overall: float
-    highRisk: int
-    critical: int
+    high: int
     low: int
     medium: int
