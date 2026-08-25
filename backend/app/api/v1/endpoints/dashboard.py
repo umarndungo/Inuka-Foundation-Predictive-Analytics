@@ -69,15 +69,25 @@ async def get_risk_distribution(db: AsyncSession = Depends(get_db)) -> RiskDistr
 
 @router.get("/metrics/kpi", response_model=list[KPIMetricResponse])
 async def get_kpi_metrics(db: AsyncSession = Depends(get_db)) -> list[KPIMetricResponse]:
-    result = await db.execute(select(RegionalRiskStats))
-    rows = result.scalars().all()
-
+    # Enrolled + telemetry coverage from regional stats (identity graph)
+    stats_result = await db.execute(select(RegionalRiskStats))
+    rows = stats_result.scalars().all()
     total_beneficiaries = sum(int(r.beneficiary_count or 0) for r in rows)
-    high_risk = sum(int(r.high_risk_count or 0) for r in rows)
+    with_telemetry = sum(int(r.with_telemetry_count or 0) for r in rows)
+
+    # High risk count from beneficiary_risk_scores (same source as /risk/distribution)
+    score_result = await db.execute(select(BeneficiaryRiskScore))
+    scores = score_result.scalars().all()
+    latest_scores: dict[str, BeneficiaryRiskScore] = {}
+    for s in sorted(scores, key=lambda x: (x.beneficiary_id, x.scored_at), reverse=True):
+        latest_scores.setdefault(s.beneficiary_id, s)
+    high_and_critical = sum(
+        1 for s in latest_scores.values()
+        if s.risk_tier == "HIGH" and float(s.risk_score) >= 0.75
+    )
+
     alerts_result = await db.execute(text("SELECT COALESCE(SUM(alert_count), 0) FROM gold.regional_alert_stats"))
     alert_count = int(alerts_result.scalar() or 0)
-    latest_sync = max((r.last_ingested_at for r in rows if r.last_ingested_at is not None), default=None)
-    with_telemetry = sum(int(r.with_telemetry_count or 0) for r in rows)
 
     return [
         KPIMetricResponse(
@@ -92,12 +102,12 @@ async def get_kpi_metrics(db: AsyncSession = Depends(get_db)) -> list[KPIMetricR
         ),
         KPIMetricResponse(
             label="High Risk",
-            value=high_risk,
+            value=high_and_critical,
             change=0.0,
             changeLabel="vs last sync",
             description="Beneficiaries currently flagged HIGH risk",
             icon="shield-alert",
-            status="critical" if high_risk else "normal",
+            status="critical" if high_and_critical else "normal",
             isInverse=True,
         ),
         KPIMetricResponse(

@@ -3,19 +3,6 @@ Regional demand forecasting for frontend charts and maps.
 
 Produces chart-ready demand series for `GET /api/v1/demand` and regional
 summary breakdowns for `GET /api/v1/demand/breakdown`.
-
-Changes from v1:
-- Fixed broken function structure: forecast_regional_demand() had an
-  incomplete body, _build_forecast was called but never defined, and
-  results.append was orphaned inside _daily_series. All functions are
-  now self-contained and independently callable.
-- forecast_demand_series() is now a proper public function (was referenced
-  in forecast_as_of but never defined).
-- Added allocate_field_workers() — maps forecast demand index to a
-  recommended field worker headcount per region within a total budget.
-  Result is attached to every forecast_regional_demand() response.
-- Reproducible noise uses numpy Generator (default_rng), not legacy
-  RandomState.
 """
 
 from __future__ import annotations
@@ -34,13 +21,6 @@ ML_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ML_DIR.parents[2]
 DEFAULT_DATA = REPO_ROOT / "data-pipeline" / "data" / "synthetic_beneficiaries.json"
 
-# Total field worker budget to allocate across all regions.
-FIELD_WORKER_BUDGET = 20
-
-
-# ---------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------
 
 def _load_frame(path: Path) -> pd.DataFrame:
     df = pd.DataFrame(json.loads(path.read_text(encoding="utf-8")))
@@ -49,16 +29,6 @@ def _load_frame(path: Path) -> pd.DataFrame:
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     return df
 
-
-def _normalize_region(region: str | None) -> str:
-    if not region or region.lower() == "national":
-        return "National"
-    return region
-
-
-# ---------------------------------------------------------------------
-# Demand proxy
-# ---------------------------------------------------------------------
 
 def _risk_pressure(df: pd.DataFrame) -> pd.Series:
     return (
@@ -78,11 +48,13 @@ def _prepare_frame(data_path: Path | None = None) -> pd.DataFrame:
     path = data_path or DEFAULT_DATA
     df = _load_frame(path)
     df["pressure"] = _risk_pressure(df)
+    return df
 
-    now = datetime.now(timezone.utc)
-    results: list[dict[str, Any]] = []
 
-    for region in REGIONS:
+def _daily_series(df: pd.DataFrame, region: str) -> pd.Series:
+    if region == "National":
+        sub = df
+    else:
         sub = df[df["region"] == region]
     if sub.empty:
         return pd.Series(dtype=float)
@@ -179,8 +151,7 @@ def _build_forecast(region: str, daily: pd.Series, horizon_days: int) -> dict[st
 def forecast_demand_series(
     region: str | None = None,
     horizon_days: int = 7,
-    data_path: Path | None = None,
-) -> dict[str, Any]:
+    data_path: Path | None = None,) -> dict[str, Any]:
     df = _prepare_frame(data_path)
     normalized_region = _normalize_region(region)
     daily = _daily_series(df, normalized_region)
@@ -189,49 +160,35 @@ def forecast_demand_series(
 
 def forecast_regional_breakdown(
     horizon_days: int = 7,
-    data_path: Path | None = None,
-) -> list[dict[str, Any]]:
+    data_path: Path | None = None,) -> list[dict[str, Any]]:
     df = _prepare_frame(data_path)
     results: list[dict[str, Any]] = []
 
+    for region in REGIONS:
+        region_df = df[df["region"] == region]
+        forecast = _build_forecast(region, _daily_series(df, region), horizon_days)
+        risk_factor = float(region_df["pressure"].mean()) / 3.0 if not region_df.empty else 0.0
         results.append(
             {
                 "region": region,
-                "current_demand_index": round(current, 4),
-                "forecast_demand_index": round(forecast, 4),
-                "trend": trend,
-                "horizon_days": horizon_days,
-                "high_risk_share": round(high_share, 4),
-                "beneficiary_count": int(len(sub)),
-                "generated_at": now.isoformat().replace("+00:00", "Z"),
+                "predicted_demand": forecast["predicted"][-1] if forecast["predicted"] else 0.0,
+                "historical_trend": forecast["historical"],
+                "risk_factor": round(risk_factor, 2),
+                "dates": forecast["dates"],
+                "summary": forecast["summary"],
             }
         )
-
-    # Attach resource allocation recommendation to each region entry
-    worker_allocation = allocate_field_workers(results)
-    for entry in results:
-        entry["recommended_workers"] = worker_allocation.get(entry["region"], 0)
 
     return results
 
 
 def forecast_as_of(days_back: int = 14, **kwargs: Any) -> dict[str, Any]:
-    """Optional helper: clip history window before forecasting."""
     path = kwargs.get("data_path") or DEFAULT_DATA
-
     df = _load_frame(path)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
     df = df[df["timestamp"] >= cutoff]
-
     tmp = ML_DIR / "_demand_window.json"
-    tmp.write_text(
-        df.to_json(
-            orient="records",
-            date_format="iso",
-        ),
-        encoding="utf-8",
-    )
-
+    tmp.write_text(df.to_json(orient="records", date_format="iso"), encoding="utf-8")
     try:
         return forecast_demand_series(
             region=kwargs.get("region"),

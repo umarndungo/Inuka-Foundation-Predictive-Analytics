@@ -9,7 +9,7 @@ import { Users } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function BeneficiariesPage() {
-  const paginatedRes = await api.getBeneficiaries({ pageSize: 100 });
+  const paginatedRes = await api.getBeneficiaries({ pageSize: 500 });
   const beneficiaries = paginatedRes.items;
 
   const criticalBeneficiaries = beneficiaries.filter((b) => b.riskTier === "critical");
