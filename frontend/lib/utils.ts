@@ -23,31 +23,28 @@ export function formatRiskScore(score: number): string {
   return score.toFixed(2);
 }
 
-export function getRiskTier(score: number): "low" | "medium" | "high" | "critical" {
-  if (score >= 0.85) return "critical";
-  if (score >= 0.7) return "high";
-  if (score >= 0.4) return "medium";
-  return "low";
+export function getRiskTier(score: number): "LOW" | "MEDIUM" | "HIGH" {
+  if (score > 0.75) return "HIGH";
+  if (score >= 0.45) return "MEDIUM";
+  return "LOW";
 }
 
 export function getRiskTierLabel(tier: string): string {
   const labels: Record<string, string> = {
-    low: "Low",
-    medium: "Medium",
-    high: "High",
-    critical: "Critical",
+    LOW: "Low",
+    MEDIUM: "Medium",
+    HIGH: "High",
   };
-  return labels[tier] || tier;
+  return labels[tier.toUpperCase()] || tier;
 }
 
 export function getRiskColor(tier: string): string {
   const colors: Record<string, string> = {
-    low: "var(--risk-low)",
-    medium: "var(--risk-medium)",
-    high: "var(--risk-high)",
-    critical: "var(--risk-critical)",
+    LOW: "var(--risk-low)",
+    MEDIUM: "var(--risk-medium)",
+    HIGH: "var(--risk-high)",
   };
-  return colors[tier] || colors.low;
+  return colors[tier.toUpperCase()] || colors.LOW;
 }
 
 export function formatRelativeTime(date: Date | string): string {

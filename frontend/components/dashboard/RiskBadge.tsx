@@ -6,19 +6,19 @@ import type { Beneficiary } from "@/types";
 import { getRiskTier, getRiskTierLabel } from "@/lib/utils";
 
 interface RiskBadgeProps {
-  tier: "low" | "medium" | "high" | "critical";
+  tier: "LOW" | "MEDIUM" | "HIGH";
   size?: "sm" | "md";
   showIcon?: boolean;
   className?: string;
 }
 
 export function RiskBadge({ tier, size = "md", className }: RiskBadgeProps) {
-  const isUrgent = tier === "high" || tier === "critical";
+  const isUrgent = tier === "HIGH";
 
   return (
     <StatusBadge
-      status={tier}
-      label={`${getRiskTierLabel(tier)} RISK`}
+      status={tier.toLowerCase()}
+      label={`${getRiskTierLabel(tier.toLowerCase())} RISK`}
       size={size}
       showDot={isUrgent}
       className={className}
@@ -35,8 +35,8 @@ interface RiskScoreProps {
 }
 
 export function RiskScore({ score, size = "md", showBar = true, showLabel = true, className }: RiskScoreProps) {
-  const tier = getRiskTier(score);
-  const isUrgent = tier === "high" || tier === "critical";
+  const tier = getRiskTier(score).toUpperCase() as "LOW" | "MEDIUM" | "HIGH";
+  const isUrgent = tier === "HIGH";
 
   const sizeStyles = {
     sm: { fontSize: "text-lg", barHeight: "h-1.5", barWidth: "w-24" },

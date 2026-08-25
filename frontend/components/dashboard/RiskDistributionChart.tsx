@@ -24,7 +24,6 @@ const CHART_CONFIG: ChartConfig = {
   low: { label: "Low Tier", color: "var(--risk-low)" },
   medium: { label: "Medium Tier", color: "var(--risk-medium)" },
   high: { label: "High Tier", color: "var(--risk-high)" },
-  critical: { label: "Critical Tier", color: "var(--risk-critical)" },
 };
 
 export function RiskDistributionChart({ data, className }: RiskDistributionChartProps) {
@@ -33,7 +32,6 @@ export function RiskDistributionChart({ data, className }: RiskDistributionChart
     { name: "Low", value: data.low, fill: "var(--risk-low)" },
     { name: "Medium", value: data.medium, fill: "var(--risk-medium)" },
     { name: "High", value: data.high, fill: "var(--risk-high)" },
-    { name: "Critical", value: data.critical, fill: "var(--risk-critical)" },
   ];
 
   return (
@@ -55,7 +53,7 @@ export function RiskDistributionChart({ data, className }: RiskDistributionChart
 
       <CardContent className="p-4 space-y-5 flex-1">
         {/* Metric Sub-cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5">
           <div className="p-2.5 rounded bg-secondary/60 border border-border/40 text-center space-y-0.5">
             <span className="text-base font-bold font-mono text-foreground">{data.low.toLocaleString()}</span>
             <span className="block text-[11px] text-muted-foreground font-mono">Low ({((data.low / total) * 100).toFixed(1)}%)</span>
@@ -67,10 +65,6 @@ export function RiskDistributionChart({ data, className }: RiskDistributionChart
           <div className="p-2.5 rounded bg-red-500/10 border border-red-500/20 text-center space-y-0.5">
             <span className="text-base font-bold font-mono text-primary">{data.high.toLocaleString()}</span>
             <span className="block text-[11px] font-mono font-medium text-primary">High ({((data.high / total) * 100).toFixed(1)}%)</span>
-          </div>
-          <div className="p-2.5 rounded bg-red-500/20 border border-red-500/30 text-center space-y-0.5">
-            <span className="text-base font-bold font-mono text-red-600">{data.critical.toLocaleString()}</span>
-            <span className="block text-[11px] font-mono font-bold text-red-600">Critical ({((data.critical / total) * 100).toFixed(1)}%)</span>
           </div>
         </div>
 

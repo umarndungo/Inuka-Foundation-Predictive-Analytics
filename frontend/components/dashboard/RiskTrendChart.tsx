@@ -34,8 +34,7 @@ type RangeKey = keyof typeof RANGE_CONFIG;
 
 const CHART_CONFIG: ChartConfig = {
   overall: { label: "Overall Risk", color: "var(--primary)" },
-  highRisk: { label: "High Risk", color: "var(--risk-high)" },
-  critical: { label: "Critical", color: "var(--risk-critical)" },
+  high: { label: "High Risk", color: "var(--risk-high)" },
 };
 
 export function RiskTrendChart({ data, className }: RiskTrendChartProps) {
@@ -102,19 +101,10 @@ export function RiskTrendChart({ data, className }: RiskTrendChartProps) {
               />
               <Line
                 type="monotone"
-                dataKey="highRisk"
+                dataKey="high"
                 stroke="var(--risk-high)"
                 strokeWidth={2}
                 strokeDasharray="4 4"
-                dot={false}
-                activeDot={{ r: 5 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="critical"
-                stroke="var(--risk-critical)"
-                strokeWidth={2}
-                strokeDasharray="2 2"
                 dot={false}
                 activeDot={{ r: 5 }}
               />
@@ -130,10 +120,6 @@ export function RiskTrendChart({ data, className }: RiskTrendChartProps) {
           <div className="flex items-center gap-1.5">
             <span className="w-6 h-0.5 bg-[var(--risk-high)]" />
             <span>High Risk</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-6 h-0.5 bg-[var(--risk-critical)]" />
-            <span>Critical Risk</span>
           </div>
         </div>
       </CardContent>

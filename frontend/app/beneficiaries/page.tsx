@@ -12,8 +12,7 @@ export default async function BeneficiariesPage() {
   const paginatedRes = await api.getBeneficiaries({ pageSize: 500 });
   const beneficiaries = paginatedRes.items;
 
-  const criticalBeneficiaries = beneficiaries.filter((b) => b.riskTier === "critical");
-  const highBeneficiaries = beneficiaries.filter((b) => b.riskTier === "high");
+  const highRiskBeneficiaries = beneficiaries.filter((b) => b.riskTier === "HIGH");
 
   const regionalSummaries = Object.values(
     beneficiaries.reduce<Record<string, { region: string; count: number; highRisk: number }>>((acc, beneficiary) => {
@@ -22,7 +21,7 @@ export default async function BeneficiariesPage() {
         acc[key] = { region: beneficiary.region, count: 0, highRisk: 0 };
       }
       acc[key].count += 1;
-      if (beneficiary.riskTier === "high" || beneficiary.riskTier === "critical") {
+      if (beneficiary.riskTier === "HIGH") {
         acc[key].highRisk += 1;
       }
       return acc;
@@ -37,8 +36,7 @@ export default async function BeneficiariesPage() {
           description="Comprehensive directory of enrolled program participants — Search, filter by risk score, examine risk drivers, and inspect assigned field agents."
         >
           <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge status="critical" label={`${criticalBeneficiaries.length} Critical`} showDot size="sm" />
-            <StatusBadge status="high" label={`${highBeneficiaries.length} High Risk`} showDot size="sm" />
+            <StatusBadge status="high" label={`${highRiskBeneficiaries.length} High Risk`} showDot size="sm" />
             <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary px-2.5 py-1 rounded-full border border-border/60 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-primary" />
               {paginatedRes.total} Enrolled
