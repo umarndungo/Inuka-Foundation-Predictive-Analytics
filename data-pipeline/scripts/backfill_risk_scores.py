@@ -73,12 +73,11 @@ aggregated AS (
         snapshot_date,
         COUNT(*) FILTER (WHERE risk_tier = 'LOW')::INTEGER AS low_count,
         COUNT(*) FILTER (WHERE risk_tier = 'MEDIUM')::INTEGER AS medium_count,
-        COUNT(*) FILTER (WHERE risk_tier = 'HIGH' AND risk_score < 0.85)::INTEGER AS high_count,
-        COUNT(*) FILTER (WHERE risk_tier = 'HIGH' AND risk_score >= 0.85)::INTEGER AS critical_count,
+        COUNT(*) FILTER (WHERE risk_tier = 'HIGH')::INTEGER AS high_count,
+        0::INTEGER AS critical_count,
         COUNT(*)::INTEGER AS total_count,
         ROUND(
-            ((COUNT(*) FILTER (WHERE risk_tier = 'HIGH' AND risk_score < 0.85)
-             + COUNT(*) FILTER (WHERE risk_tier = 'HIGH' AND risk_score >= 0.85))::NUMERIC)
+            (COUNT(*) FILTER (WHERE risk_tier = 'HIGH')::NUMERIC)
             / NULLIF(COUNT(*)::NUMERIC, 0),
             4
         ) AS overall_ratio

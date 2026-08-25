@@ -27,13 +27,11 @@ def _risk_score(row: BeneficiaryIdentityGraph) -> float:
 
 
 def _risk_tier(score: float) -> str:
-    if score >= 0.85:
-        return "critical"
     if score > 0.75:
-        return "high"
+        return "HIGH"
     if score >= 0.45:
-        return "medium"
-    return "low"
+        return "MEDIUM"
+    return "LOW"
 
 
 def _drivers(row: BeneficiaryIdentityGraph) -> list[str]:
@@ -58,26 +56,11 @@ def _trend(row: BeneficiaryIdentityGraph) -> str:
 
 
 def _recommended_action(score: float) -> str:
-    if score >= 0.85:
-        return "Immediate field worker visit required"
     if score > 0.75:
-        return "Contact assigned field worker and schedule home visit"
+        return "Automated Field Worker Outreach"
     if score >= 0.45:
-        return "Weekly monitoring and counselor check-in"
-    return "Continue routine monitoring"
-
-
-def _normalize_persisted_tier(tier: str | None, score: float) -> str:
-    if not tier:
-        return _risk_tier(score)
-    tier_u = tier.upper()
-    if tier_u == "LOW":
-        return "low"
-    if tier_u == "MEDIUM":
-        return "medium"
-    if tier_u == "HIGH":
-        return "critical" if score >= 0.85 else "high"
-    return _risk_tier(score)
+        return "Schedule Counselor Check-in"
+    return "Continue Routine Monitoring"
 
 
 def _persisted_drivers(score_row: BeneficiaryRiskScore | None, fallback_row: BeneficiaryIdentityGraph) -> list[str]:
@@ -100,7 +83,7 @@ def _to_response(
     region = row.region or (master.region if master else "Unknown")
     fallback_score = _risk_score(row)
     score = round(float(latest_score.risk_score), 2) if latest_score else fallback_score
-    tier = _normalize_persisted_tier(latest_score.risk_tier if latest_score else None, score)
+    tier = latest_score.risk_tier.upper() if latest_score and latest_score.risk_tier else _risk_tier(score)
     lat = master.home_lat if master and master.home_lat is not None else 0.0
     lng = master.home_lng if master and master.home_lng is not None else 0.0
     last_activity = row.last_event_at.isoformat() if row.last_event_at else datetime.now(timezone.utc).isoformat()
@@ -204,6 +187,7 @@ async def get_beneficiary(
         select(BeneficiaryRiskScore)
         .where(BeneficiaryRiskScore.beneficiary_id == canonical_id)
         .order_by(BeneficiaryRiskScore.scored_at.desc())
+        .limit(1)
     )
     latest_score = score_result.scalar_one_or_none()
     return _to_response(row, master, latest_score)

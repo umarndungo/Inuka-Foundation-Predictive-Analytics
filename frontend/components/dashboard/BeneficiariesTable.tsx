@@ -34,7 +34,7 @@ interface BeneficiariesTableProps {
   className?: string;
   title?: string;
   description?: string;
-  defaultRiskFilter?: "all" | "critical" | "high" | "medium" | "low";
+  defaultRiskFilter?: "all" | "HIGH" | "MEDIUM" | "LOW";
   exportFilePrefix?: string;
   modalDescription?: string;
   recommendedActionLabel?: string;
@@ -51,7 +51,7 @@ export function BeneficiariesTable({
   recommendedActionLabel = "Recommended Action",
 }: BeneficiariesTableProps) {
   const [search, setSearch] = useState("");
-  const [riskFilter, setRiskFilter] = useState<"all" | "critical" | "high" | "medium" | "low">(defaultRiskFilter);
+  const [riskFilter, setRiskFilter] = useState<"all" | "HIGH" | "MEDIUM" | "LOW">(defaultRiskFilter);
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Beneficiary; direction: "asc" | "desc" }>({
     key: "riskScore",
@@ -78,7 +78,7 @@ export function BeneficiariesTable({
     }
 
     if (riskFilter !== "all") {
-      result = result.filter((b) => b.riskTier === riskFilter);
+      result = result.filter((b) => b.riskTier.toUpperCase() === riskFilter.toUpperCase());
     }
 
     if (regionFilter !== "all") {
@@ -164,10 +164,9 @@ export function BeneficiariesTable({
               </SelectTrigger>
               <SelectContent className="rounded-md shadow-none border border-border">
                 <SelectItem value="all">All Risk Levels</SelectItem>
-                <SelectItem value="critical">Critical Tier</SelectItem>
-                <SelectItem value="high">High Tier</SelectItem>
-                <SelectItem value="medium">Medium Tier</SelectItem>
-                <SelectItem value="low">Low Tier</SelectItem>
+                <SelectItem value="HIGH">High Tier</SelectItem>
+                <SelectItem value="MEDIUM">Medium Tier</SelectItem>
+                <SelectItem value="LOW">Low Tier</SelectItem>
               </SelectContent>
             </Select>
 
@@ -278,10 +277,10 @@ export function BeneficiariesTable({
 
                     <TableCell className="py-3">
                       <StatusBadge
-                        status={b.riskTier}
-                        label={getRiskTierLabel(b.riskTier as any)}
+                        status={b.riskTier.toLowerCase()}
+                        label={getRiskTierLabel(b.riskTier.toLowerCase())}
                         size="sm"
-                        showDot={b.riskTier === "critical" || b.riskTier === "high"}
+                        showDot={b.riskTier === "HIGH"}
                       />
                     </TableCell>
 
@@ -350,7 +349,7 @@ export function BeneficiariesTable({
                 <DialogTitle className="text-base font-bold font-mono">
                   {selectedBeneficiary.code} • {selectedBeneficiary.name}
                 </DialogTitle>
-                <StatusBadge status={selectedBeneficiary.riskTier} size="sm" showDot />
+                <StatusBadge status={selectedBeneficiary.riskTier.toLowerCase()} size="sm" showDot />
               </div>
               <DialogDescription className="text-xs text-muted-foreground">
                 {modalDescription}

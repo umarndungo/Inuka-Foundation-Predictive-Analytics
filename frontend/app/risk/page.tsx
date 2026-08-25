@@ -15,7 +15,7 @@ export default async function RiskRadarPage() {
   ]);
 
   const highRiskBeneficiaries = beneficiariesRes.items.filter(
-    (beneficiary) => beneficiary.riskTier === "high" || beneficiary.riskTier === "critical"
+    (beneficiary) => beneficiary.riskTier === "HIGH"
   );
 
   return (
@@ -28,7 +28,7 @@ export default async function RiskRadarPage() {
           <div className="flex items-center gap-3">
             <StatusBadge
               status="critical"
-              label={`${riskDistribution.critical + riskDistribution.high} High & Critical Risk`}
+              label={`${riskDistribution.high} High Risk`}
               showDot
               size="sm"
             />

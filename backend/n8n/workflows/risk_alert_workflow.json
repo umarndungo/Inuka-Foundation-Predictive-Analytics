@@ -1,5 +1,5 @@
 {
-  "name": "Inuka Risk Radar - Field Worker SMS Escalation",
+  "name": "Inuka Risk Radar - Email Escalation",
   "nodes": [
     {
       "parameters": {
@@ -20,81 +20,66 @@
         "assignments": {
           "assignments": [
             {
-              "id": "sms-body",
-              "name": "sms_body",
+              "id": "email-subject",
+              "name": "email_subject",
               "type": "string",
-              "value": "=INUKA ALERT: Beneficiary {{$json.body.beneficiary_id}} is {{$json.body.risk_tier}} risk (score {{$json.body.risk_score}}) in {{$json.body.region}}. Please schedule a field visit. Alert: {{$json.body.alert_id}}"
+              "value": "=INUKA ALERT: Beneficiary {{$json.body.beneficiary_id}} is {{$json.body.risk_tier}} risk (score {{$json.body.risk_score}}) in {{$json.body.region}}"
             },
             {
-              "id": "field-worker-number",
-              "name": "field_worker_number",
+              "id": "email-body",
+              "name": "email_body",
               "type": "string",
-              "value": "={{$env.FIELD_WORKER_PHONE_NUMBER}}"
+              "value": "=<h2>INUKA Risk Alert</h2><p>A beneficiary has been flagged as <strong>{{$json.body.risk_tier}}</strong> risk.</p><table style='border-collapse:collapse;width:100%;max-width:500px'><tr><td style='padding:8px;border:1px solid #ddd;font-weight:bold'>Beneficiary ID</td><td style='padding:8px;border:1px solid #ddd'>{{$json.body.beneficiary_id}}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;font-weight:bold'>Risk Score</td><td style='padding:8px;border:1px solid #ddd'>{{$json.body.risk_score}}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;font-weight:bold'>Risk Tier</td><td style='padding:8px;border:1px solid #ddd'>{{$json.body.risk_tier}}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;font-weight:bold'>Region</td><td style='padding:8px;border:1px solid #ddd'>{{$json.body.region}}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;font-weight:bold'>Alert ID</td><td style='padding:8px;border:1px solid #ddd'>{{$json.body.alert_id}}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;font-weight:bold'>Triggered At</td><td style='padding:8px;border:1px solid #ddd'>{{$json.body.triggered_at}}</td></tr></table><p style='margin-top:16px;color:#666;font-size:12px'>This is an automated alert from Inuka Risk Radar. Please schedule a field visit for this beneficiary.</p>"
+            },
+            {
+              "id": "recipient-email",
+              "name": "recipient_email",
+              "type": "string",
+              "value": "={{$env.FIELD_WORKER_EMAIL || 'omarnjagi@gmail.com'}}"
             }
           ]
         },
         "options": {}
       },
       "id": "1a2b3c4d-0002-4a11-8000-000000000002",
-      "name": "Format SMS",
+      "name": "Format Email",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [480, 300]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://api.twilio.com/2010-04-01/Accounts/{{$env.TWILIO_ACCOUNT_SID}}/Messages.json",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBasicAuth",
-        "sendBody": true,
-        "contentType": "form-urlencoded",
-        "bodyParameters": {
-          "parameters": [
-            { "name": "To", "value": "={{$json.field_worker_number}}" },
-            { "name": "From", "value": "={{$env.TWILIO_FROM_NUMBER}}" },
-            { "name": "Body", "value": "={{$json.sms_body}}" }
-          ]
-        },
+        "sendTo": "={{$json.recipient_email}}",
+        "subject": "={{$json.email_subject}}",
+        "emailType": "html",
+        "message": "={{$json.email_body}}",
         "options": {}
       },
       "id": "1a2b3c4d-0003-4a11-8000-000000000003",
-      "name": "Twilio - send SMS",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [700, 220],
+      "name": "Gmail - send email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [700, 300],
       "credentials": {
-        "httpBasicAuth": {
-          "id": "twilio-basic-auth",
-          "name": "Twilio Basic Auth (Account SID / Auth Token)"
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail OAuth2"
         }
       }
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { \"status\": \"ok\", \"alert_id\": $('Webhook - risk alert').item.json.body.alert_id } }}"
-      },
-      "id": "1a2b3c4d-0004-4a11-8000-000000000004",
-      "name": "Respond to webhook",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.2,
-      "position": [700, 400]
     }
   ],
   "connections": {
     "Webhook - risk alert": {
       "main": [
         [
-          { "node": "Format SMS", "type": "main", "index": 0 }
+          { "node": "Format Email", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Format SMS": {
+    "Format Email": {
       "main": [
         [
-          { "node": "Twilio - send SMS", "type": "main", "index": 0 },
-          { "node": "Respond to webhook", "type": "main", "index": 0 }
+          { "node": "Gmail - send email", "type": "main", "index": 0 }
         ]
       ]
     }

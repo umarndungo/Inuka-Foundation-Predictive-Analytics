@@ -113,8 +113,8 @@ async def _persist_alert_record(
         alert_id=f"ALT-{uuid.uuid4().hex[:8].upper()}",
         beneficiary_id=beneficiary_id,
         field_worker_id=None,
-        severity="critical" if risk_tier == "HIGH" else "medium",
-        type="critical_risk" if risk_tier == "HIGH" else "high_risk",
+        severity="high" if risk_tier == "HIGH" else "medium",
+        type="high_risk" if risk_tier == "HIGH" else "telemetry_anomaly",
         status="new",
         description=(
             f"Beneficiary {beneficiary_id} evaluated as {risk_tier} risk "

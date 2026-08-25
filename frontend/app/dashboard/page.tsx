@@ -28,12 +28,12 @@ export default async function DashboardPage() {
   ]);
 
   const highRiskBeneficiaries = beneficiariesRes.items.filter(
-    (beneficiary) => beneficiary.riskTier === "high" || beneficiary.riskTier === "critical"
+    (beneficiary) => beneficiary.riskTier === "HIGH"
   );
 
   const totalBeneficiaries = riskDistribution.total;
-  const highAndCritical = riskDistribution.high + riskDistribution.critical;
-  const flaggedShare = totalBeneficiaries > 0 ? (highAndCritical / totalBeneficiaries) * 100 : 0;
+  const highCount = riskDistribution.high;
+  const flaggedShare = totalBeneficiaries > 0 ? (highCount / totalBeneficiaries) * 100 : 0;
   const topRegionalSurge = [...regionalBreakdown].sort((a, b) => b.summary.expectedChange - a.summary.expectedChange)[0];
   const peakRegionLabel = topRegionalSurge
     ? `${topRegionalSurge.region} (${topRegionalSurge.summary.expectedChange >= 0 ? "+" : ""}${topRegionalSurge.summary.expectedChange.toFixed(1)}%)`
@@ -95,12 +95,12 @@ export default async function DashboardPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono font-medium text-muted-foreground">
                   <span className="flex items-center gap-1.5 text-primary font-semibold">
-                    <ShieldAlert className="w-4 h-4" /> High & Critical Flagged
+                    <ShieldAlert className="w-4 h-4" /> High Risk Flagged
                   </span>
                   <StatusBadge status={flaggedShare > 0 ? "critical" : "normal"} label={`${flaggedShare.toFixed(1)}%`} size="sm" />
                 </div>
                 <div className="text-3xl font-extrabold font-sans text-foreground tracking-tight pt-1 tabular-nums">
-                  {highAndCritical.toLocaleString()} <span className="text-xs font-normal text-muted-foreground font-sans">of {totalBeneficiaries.toLocaleString()} Beneficiaries</span>
+                  {highCount.toLocaleString()} <span className="text-xs font-normal text-muted-foreground font-sans">of {totalBeneficiaries.toLocaleString()} Beneficiaries</span>
                 </div>
               </div>
 
@@ -134,7 +134,7 @@ export default async function DashboardPage() {
         <BeneficiariesTable
           beneficiaries={highRiskBeneficiaries}
           title="High-Risk Beneficiary Directory"
-          description="High- and critical-risk beneficiary cases derived from persisted scoring outputs and ready for intervention review."
+          description="High-risk beneficiary cases derived from persisted scoring outputs and ready for intervention review."
           defaultRiskFilter="all"
           exportFilePrefix="high_risk_beneficiaries"
           modalDescription="Detailed high-risk beneficiary profile and recommended intervention guide."
