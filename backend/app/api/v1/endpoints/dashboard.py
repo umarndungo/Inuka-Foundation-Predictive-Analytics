@@ -82,7 +82,12 @@ async def get_kpi_metrics(db: AsyncSession = Depends(get_db)) -> list[KPIMetricR
     high_risk = sum(1 for s in latest_scores.values() if s.risk_tier == "HIGH")
 
     alerts_result = await db.execute(text("SELECT COALESCE(SUM(alert_count), 0) FROM gold.regional_alert_stats"))
-    alert_count = int(alerts_result.scalar() or 0)
+    kafka_alert_count = int(alerts_result.scalar() or 0)
+
+    ops_alerts_result = await db.execute(text("SELECT COUNT(*) FROM operations.alerts"))
+    ops_alert_count = int(ops_alerts_result.scalar() or 0)
+
+    alert_count = kafka_alert_count + ops_alert_count
 
     return [
         KPIMetricResponse(
