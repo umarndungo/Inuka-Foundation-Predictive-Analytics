@@ -9,7 +9,7 @@ export interface Beneficiary {
   age: number;
   gender: "M" | "F";
   riskScore: number;
-  riskTier: "low" | "medium" | "high" | "critical";
+  riskTier: "LOW" | "MEDIUM" | "HIGH";
   riskDrivers: string[];
   recommendedAction: string;
   lastActivity: string;
@@ -43,15 +43,13 @@ export interface RiskDistribution {
   low: number;
   medium: number;
   high: number;
-  critical: number;
   total: number;
 }
 
 export interface RiskTrendPoint {
   date: string;
   overall: number;
-  highRisk: number;
-  critical: number;
+  high: number;
   low: number;
   medium: number;
 }

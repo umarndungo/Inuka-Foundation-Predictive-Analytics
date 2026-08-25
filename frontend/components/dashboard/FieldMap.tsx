@@ -5,27 +5,33 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Map, NavigationControl, ScaleControl, Marker } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
 import { MapPin, X, Compass } from "lucide-react";
 import type { Beneficiary, FieldWorker, MapRegion } from "@/types";
-import { getRiskTier } from "@/lib/utils";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-const DEFAULT_CENTER: [number, number] = [36.8219, -1.2921];
-const DEFAULT_ZOOM = 5.8;
+const DEFAULT_CENTER: [number, number] = [-1.2921, 36.8219];
+const DEFAULT_ZOOM = 7;
 
 const getRiskColorHex = (tier: string) => {
   switch (tier) {
-    case "critical":
-      return "#991B1B";
-    case "high":
+    case "HIGH":
       return "#DC2626";
-    case "medium":
+    case "MEDIUM":
       return "#71717A";
     default:
       return "#52525B";
   }
 };
+
+function createIcon(html: string, size: number = 36): L.DivIcon {
+  return L.divIcon({
+    html,
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
 
 interface FieldMapProps {
   className?: string;
@@ -36,7 +42,7 @@ interface FieldMapProps {
 
 export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }: FieldMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Map | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<MapRegion | null>(null);
   const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
   const [showBeneficiaries, setShowBeneficiaries] = useState(true);
@@ -51,68 +57,52 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
     setMapLoaded(false);
 
     try {
-      const map = new Map({
-        container: mapContainerRef.current,
-        style: "https://demotiles.maplibre.org/style.json",
+      const map = L.map(mapContainerRef.current, {
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
-        attributionControl: false,
+        zoomControl: false,
       });
 
-      const loadTimeout = window.setTimeout(() => {
-        setMapError("Map tiles did not finish loading. This usually means the browser could not reach the external MapLibre demo tile service.");
-        setMapLoaded(false);
-      }, 10000);
+      L.control.zoom({ position: "topright" }).addTo(map);
 
-      map.addControl(new NavigationControl({ showCompass: false }), "top-right");
-      map.addControl(new ScaleControl({ unit: "metric" }), "bottom-right");
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 18,
+      }).addTo(map);
 
-      map.on("load", () => {
-        window.clearTimeout(loadTimeout);
-        setMapError(null);
+      map.whenReady(() => {
         setMapLoaded(true);
 
         mapRegions.forEach((region) => {
-        const el = document.createElement("div");
-        el.className = "region-marker";
-        const tier = getRiskTier(region.riskScore);
-        const riskColor = getRiskColorHex(tier);
-        el.innerHTML = `
-          <div style="
-            width: 36px; height: 36px; border-radius: 50%;
-            background: ${riskColor};
-            border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 11px; color: white;
-            cursor: pointer; transition: transform 0.15s ease;
-          " title="${region.name}: ${region.beneficiaries} enrolled, ${region.highRisk} high-risk">
-            ${region.highRisk}
-          </div>
-        `;
+          const tier = region.riskScore >= 0.75 ? "HIGH" : region.riskScore >= 0.45 ? "MEDIUM" : "LOW";
+          const riskColor = getRiskColorHex(tier);
+          const icon = createIcon(`
+            <div style="
+              width: 36px; height: 36px; border-radius: 50%;
+              background: ${riskColor};
+              border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              display: flex; align-items: center; justify-content: center;
+              font-weight: 700; font-size: 11px; color: white;
+              cursor: pointer; transition: transform 0.15s ease;
+            " title="${region.name}: ${region.beneficiaries} enrolled, ${region.highRisk} high-risk">
+              ${region.highRisk}
+            </div>
+          `);
 
-        new Marker({ element: el, anchor: "center" })
-          .setLngLat(region.coordinates)
-          .addTo(map);
-
-        el.addEventListener("click", (e) => {
-          e.stopPropagation();
-          setSelectedRegion(region);
-          setSelectedBeneficiary(null);
+          const marker = L.marker(region.coordinates as L.LatLngExpression, { icon })
+            .addTo(map)
+            .on("click", () => {
+              setSelectedRegion(region);
+              setSelectedBeneficiary(null);
+            });
         });
-      });
 
-      if (showBeneficiaries) {
-        addBeneficiaryMarkers(map);
-      }
+        if (showBeneficiaries) {
+          addBeneficiaryMarkers(map);
+        }
         if (showFieldWorkers) {
           addFieldWorkerMarkers(map);
         }
-      });
-
-      map.on("error", () => {
-        window.clearTimeout(loadTimeout);
-        setMapError("Map resources failed to load. The rest of the page is still available, but the live basemap could not be rendered.");
-        setMapLoaded(false);
       });
 
       mapRef.current = map;
@@ -122,53 +112,45 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
     }
   }, [beneficiaries, mapRegions, showBeneficiaries, showFieldWorkers]);
 
-  const addBeneficiaryMarkers = (map: Map) => {
+  const addBeneficiaryMarkers = (map: L.Map) => {
     const highRiskBeneficiaries = beneficiaries.filter(
-      (b) => b.riskTier === "high" || b.riskTier === "critical"
+      (b) => b.riskTier === "HIGH"
     );
 
     highRiskBeneficiaries.forEach((b) => {
-      const el = document.createElement("div");
       const color = getRiskColorHex(b.riskTier);
-      el.innerHTML = `
+      const icon = createIcon(`
         <div style="
           width: 12px; height: 12px; border-radius: 50%;
           background: ${color}; border: 1.5px solid white;
           box-shadow: 0 1px 4px rgba(0,0,0,0.2); cursor: pointer;
-        " title="${b.code}: ${b.riskTier.toUpperCase()} (${b.riskScore})"></div>
-      `;
+        " title="${b.code}: ${b.riskTier} (${b.riskScore})"></div>
+      `, 12);
 
-      new Marker({ element: el, anchor: "center" })
-        .setLngLat([b.coordinates.lng, b.coordinates.lat])
-        .addTo(map);
-
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        setSelectedBeneficiary(b);
-        setSelectedRegion(null);
-      });
+      L.marker([b.coordinates.lat, b.coordinates.lng], { icon })
+        .addTo(map)
+        .on("click", () => {
+          setSelectedBeneficiary(b);
+          setSelectedRegion(null);
+        });
     });
   };
 
-  const addFieldWorkerMarkers = (map: Map) => {
+  const addFieldWorkerMarkers = (map: L.Map) => {
     fieldWorkers.forEach((worker) => {
       const region = mapRegions.find((item) => item.name.toLowerCase() === worker.region.toLowerCase());
       if (!region) return;
 
-      const [lng, lat] = region.coordinates;
-      const el = document.createElement("div");
-      el.innerHTML = `
+      const icon = createIcon(`
         <div style="
           width: 16px; height: 16px; border-radius: 9999px;
           background: ${worker.isOnline ? "#16A34A" : "#71717A"};
           border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.25);
           cursor: pointer;
         " title="${worker.name} (${worker.region})"></div>
-      `;
+      `, 16);
 
-      new Marker({ element: el, anchor: "center" })
-        .setLngLat([lng, lat])
-        .addTo(map);
+      L.marker(region.coordinates as L.LatLngExpression, { icon }).addTo(map);
     });
   };
 
@@ -183,11 +165,11 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
   }, [initializeMap]);
 
   const flyToCenter = () => {
-    mapRef.current?.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, essential: true });
+    mapRef.current?.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM);
   };
 
   const flyToRegion = (region: MapRegion) => {
-    mapRef.current?.flyTo({ center: region.coordinates, zoom: 8.5, essential: true });
+    mapRef.current?.flyTo(region.coordinates as L.LatLngExpression, 9);
   };
 
   return (
@@ -237,7 +219,7 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
             <div className="flex flex-col items-center gap-2 text-muted-foreground text-xs">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="font-medium">Loading Map Tiles...</p>
+              <p className="font-medium">Loading Map...</p>
             </div>
           </div>
         )}
@@ -251,7 +233,6 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
           </div>
         )}
 
-        {/* Selected Overlay Card */}
         {(selectedRegion || selectedBeneficiary) && (
           <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-80 z-20">
             <Card className="shadow-md border border-border bg-card">
@@ -307,14 +288,9 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
           </div>
         )}
 
-        {/* Legend Overlay */}
         <div className="absolute top-3 left-3 z-10">
           <div className="bg-card/90 backdrop-blur-sm rounded-md border border-border p-2 shadow-xs text-[11px] space-y-1">
             <span className="font-mono font-medium text-muted-foreground block text-[10px] uppercase">Risk Tier Legend</span>
-            <div className="flex items-center gap-1.5 font-mono">
-              <span className="w-2 h-2 rounded-full bg-red-700" />
-              <span>Critical Risk</span>
-            </div>
             <div className="flex items-center gap-1.5 font-mono">
               <span className="w-2 h-2 rounded-full bg-red-500" />
               <span>High Risk</span>

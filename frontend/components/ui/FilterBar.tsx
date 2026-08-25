@@ -57,10 +57,9 @@ export function FilterBar({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Risk Levels</SelectItem>
-            <SelectItem value="critical">Critical (≥0.85)</SelectItem>
-            <SelectItem value="high">High (≥0.75)</SelectItem>
-            <SelectItem value="medium">Medium (0.4–0.74)</SelectItem>
-            <SelectItem value="low">Low (&lt;0.4)</SelectItem>
+            <SelectItem value="HIGH">High (≥0.75)</SelectItem>
+            <SelectItem value="MEDIUM">Medium (0.45–0.74)</SelectItem>
+            <SelectItem value="LOW">Low (&lt;0.45)</SelectItem>
           </SelectContent>
         </Select>
       )}

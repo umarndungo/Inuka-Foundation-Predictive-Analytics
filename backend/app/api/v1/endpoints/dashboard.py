@@ -52,19 +52,17 @@ async def get_risk_distribution(db: AsyncSession = Depends(get_db)) -> RiskDistr
             latest.setdefault(score.beneficiary_id, score)
         low = sum(1 for s in latest.values() if s.risk_tier == "LOW")
         medium = sum(1 for s in latest.values() if s.risk_tier == "MEDIUM")
-        high_only = sum(1 for s in latest.values() if s.risk_tier == "HIGH" and float(s.risk_score) < 0.85)
-        critical = sum(1 for s in latest.values() if s.risk_tier == "HIGH" and float(s.risk_score) >= 0.85)
-        total = low + medium + high_only + critical
-        return RiskDistributionResponse(low=low, medium=medium, high=high_only, critical=critical, total=total)
+        high = sum(1 for s in latest.values() if s.risk_tier == "HIGH")
+        total = low + medium + high
+        return RiskDistributionResponse(low=low, medium=medium, high=high, total=total)
 
     result = await db.execute(select(RegionalRiskStats))
     rows = result.scalars().all()
     low = sum(int(r.low_risk_count or 0) for r in rows)
     medium = sum(int(r.medium_risk_count or 0) for r in rows)
     high = sum(int(r.high_risk_count or 0) for r in rows)
-    critical = 0
-    total = low + medium + high + critical
-    return RiskDistributionResponse(low=low, medium=medium, high=high, critical=critical, total=total)
+    total = low + medium + high
+    return RiskDistributionResponse(low=low, medium=medium, high=high, total=total)
 
 
 @router.get("/metrics/kpi", response_model=list[KPIMetricResponse])
@@ -81,10 +79,7 @@ async def get_kpi_metrics(db: AsyncSession = Depends(get_db)) -> list[KPIMetricR
     latest_scores: dict[str, BeneficiaryRiskScore] = {}
     for s in sorted(scores, key=lambda x: (x.beneficiary_id, x.scored_at), reverse=True):
         latest_scores.setdefault(s.beneficiary_id, s)
-    high_and_critical = sum(
-        1 for s in latest_scores.values()
-        if s.risk_tier == "HIGH" and float(s.risk_score) >= 0.75
-    )
+    high_risk = sum(1 for s in latest_scores.values() if s.risk_tier == "HIGH")
 
     alerts_result = await db.execute(text("SELECT COALESCE(SUM(alert_count), 0) FROM gold.regional_alert_stats"))
     alert_count = int(alerts_result.scalar() or 0)
@@ -102,12 +97,12 @@ async def get_kpi_metrics(db: AsyncSession = Depends(get_db)) -> list[KPIMetricR
         ),
         KPIMetricResponse(
             label="High Risk",
-            value=high_and_critical,
+            value=high_risk,
             change=0.0,
             changeLabel="vs last sync",
             description="Beneficiaries currently flagged HIGH risk",
             icon="shield-alert",
-            status="critical" if high_and_critical else "normal",
+            status="critical" if high_risk else "normal",
             isInverse=True,
         ),
         KPIMetricResponse(
@@ -247,8 +242,7 @@ async def get_risk_trend(period: str = "7d", db: AsyncSession = Depends(get_db))
             RiskTrendPointResponse(
                 date=snapshot.snapshot_date.isoformat(),
                 overall=round(float(snapshot.overall_ratio), 2),
-                highRisk=int(snapshot.high_count),
-                critical=int(snapshot.critical_count),
+                high=int(snapshot.high_count) + int(snapshot.critical_count),
                 low=int(snapshot.low_count),
                 medium=int(snapshot.medium_count),
             )
@@ -271,16 +265,14 @@ async def get_risk_trend(period: str = "7d", db: AsyncSession = Depends(get_db))
             day_scores = list(buckets[day].values())
             low = sum(1 for s in day_scores if s.risk_tier == "LOW")
             medium = sum(1 for s in day_scores if s.risk_tier == "MEDIUM")
-            high_only = sum(1 for s in day_scores if s.risk_tier == "HIGH" and float(s.risk_score) < 0.85)
-            critical = sum(1 for s in day_scores if s.risk_tier == "HIGH" and float(s.risk_score) >= 0.85)
-            total = max(1, low + medium + high_only + critical)
-            overall = round((high_only + critical) / total, 2)
+            high = sum(1 for s in day_scores if s.risk_tier == "HIGH")
+            total = max(1, low + medium + high)
+            overall = round(high / total, 2)
             trend.append(
                 RiskTrendPointResponse(
                     date=day,
                     overall=overall,
-                    highRisk=high_only,
-                    critical=critical,
+                    high=high,
                     low=low,
                     medium=medium,
                 )
