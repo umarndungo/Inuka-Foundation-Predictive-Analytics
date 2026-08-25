@@ -199,14 +199,16 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://inuka:inuka@postgres:5432/inuka_risk_radar
-      KAFKA_BOOTSTRAP: redpanda:9092
-      N8N_WEBHOOK_URL: http://n8n:5678/webhook/inuka-risk-alert
     command:
       - python
       - -m
       - scripts.batch_evaluate
-      - --base-url
-      - http://backend:8000
+      - --dsn
+      - postgresql://inuka:inuka@postgres:5432/inuka_risk_radar
+      - --n8n-url
+      - http://n8n:5678/webhook/inuka-risk-alert
+      - --count
+      - "5"
     restart: "no"
 
   n8n:
