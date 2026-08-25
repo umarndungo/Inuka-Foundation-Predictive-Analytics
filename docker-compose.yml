@@ -208,7 +208,7 @@ services:
       - --n8n-url
       - http://n8n:5678/webhook/inuka-risk-alert
       - --count
-      - "5"
+      - "1"
     restart: "no"
 
   n8n:

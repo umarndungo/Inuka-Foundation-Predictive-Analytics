@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { BeneficiariesTable } from "@/components/dashboard/BeneficiariesTable";
+import { RegionCard } from "@/components/dashboard/RegionCard";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
@@ -15,14 +16,18 @@ export default async function BeneficiariesPage() {
   const highRiskBeneficiaries = beneficiaries.filter((b) => b.riskTier === "HIGH");
 
   const regionalSummaries = Object.values(
-    beneficiaries.reduce<Record<string, { region: string; count: number; highRisk: number }>>((acc, beneficiary) => {
+    beneficiaries.reduce<Record<string, { region: string; count: number; highRisk: number; mediumRisk: number; lowRisk: number }>>((acc, beneficiary) => {
       const key = beneficiary.region;
       if (!acc[key]) {
-        acc[key] = { region: beneficiary.region, count: 0, highRisk: 0 };
+        acc[key] = { region: beneficiary.region, count: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0 };
       }
       acc[key].count += 1;
       if (beneficiary.riskTier === "HIGH") {
         acc[key].highRisk += 1;
+      } else if (beneficiary.riskTier === "MEDIUM") {
+        acc[key].mediumRisk += 1;
+      } else {
+        acc[key].lowRisk += 1;
       }
       return acc;
     }, {})
@@ -62,18 +67,9 @@ export default async function BeneficiariesPage() {
               <CardTitle className="text-base font-semibold">Regional Concentration</CardTitle>
             </CardHeader>
             <CardContent className="p-5 space-y-3">
-              {regionalSummaries.map(({ region, count, highRisk }) => {
-                const pct = count > 0 ? ((highRisk / count) * 100).toFixed(1) : "0";
-                return (
-                  <div key={region} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/40 text-xs">
-                    <div>
-                      <p className="font-semibold text-foreground font-mono">{region}</p>
-                      <p className="text-muted-foreground font-mono text-[11px]">{count} beneficiaries</p>
-                    </div>
-                    <StatusBadge status={Number(pct) > 25 ? "high" : "low"} label={`${pct}% High Risk`} size="sm" />
-                  </div>
-                );
-              })}
+              {regionalSummaries.map((summary) => (
+                <RegionCard key={summary.region} {...summary} />
+              ))}
             </CardContent>
           </Card>
 

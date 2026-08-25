@@ -1,18 +1,20 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DemandForecastChart } from "@/components/dashboard/DemandForecastChart";
+import { RegionalForecastSelector } from "@/components/dashboard/RegionalForecastSelector";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
+const REGIONS = ["Nairobi", "Kisumu", "Nakuru", "Mombasa", "Eldoret"];
+
 export default async function ForecastsPage() {
-  const [nationalForecast, nairobiForecast, kisumuForecast, regionalBreakdown] = await Promise.all([
+  const [nationalForecast, regionalBreakdown, ...regionForecasts] = await Promise.all([
     api.getDemandForecast("National", 30),
-    api.getDemandForecast("Nairobi", 30),
-    api.getDemandForecast("Kisumu", 30),
     api.getRegionalDemandBreakdown(),
+    ...REGIONS.map((r) => api.getDemandForecast(r, 30)),
   ]);
 
   const expectedChange = nationalForecast.summary.expectedChange;
@@ -41,10 +43,7 @@ export default async function ForecastsPage() {
 
         <DemandForecastChart data={nationalForecast} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <DemandForecastChart data={nairobiForecast} compact />
-          <DemandForecastChart data={kisumuForecast} compact />
-        </div>
+        <RegionalForecastSelector forecasts={regionForecasts.filter(Boolean)} />
 
         <Card className="border-none shadow-none rounded-md bg-card overflow-hidden">
           <CardHeader className="p-3.5 border-b border-border/40 bg-secondary/20">
