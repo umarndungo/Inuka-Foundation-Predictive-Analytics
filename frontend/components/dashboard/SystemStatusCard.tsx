@@ -29,8 +29,8 @@ export function SystemStatusCard({ status, className }: SystemStatusCardProps) {
       </CardHeader>
       <CardContent className="p-6 space-y-6">
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-3 p-3 rounded-md bg-muted/30">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground shrink-0 border border-border">
+          <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-foreground shrink-0 border border-border/60">
               <Wifi className="w-4 h-4" />
             </div>
             <div>
@@ -38,8 +38,8 @@ export function SystemStatusCard({ status, className }: SystemStatusCardProps) {
               <p className="text-xl font-bold font-mono text-foreground tabular-nums">{status.devicesOnline.toLocaleString()} / {status.devicesTotal.toLocaleString()}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-md bg-muted/30">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground shrink-0 border border-border">
+          <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-foreground shrink-0 border border-border/60">
               <CheckCircle className="w-4 h-4" />
             </div>
             <div>
@@ -87,25 +87,25 @@ export function SystemStatusCard({ status, className }: SystemStatusCardProps) {
         <Separator />
 
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-          <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+          <div className="flex items-center gap-2 p-2 rounded-md bg-secondary/30">
             <Shield className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="flex-1 text-muted-foreground truncate">Data Pipeline</span>
             <CheckCircle className="w-3.5 h-3.5 text-muted-foreground" />
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+          <div className="flex items-center gap-2 p-2 rounded-md bg-secondary/30">
             <Cpu className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="flex-1 text-muted-foreground truncate">ML Inference</span>
             <CheckCircle className="w-3.5 h-3.5 text-muted-foreground" />
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+          <div className="flex items-center gap-2 p-2 rounded-md bg-secondary/30">
             <Users className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="flex-1 text-muted-foreground truncate">SMS Gateway</span>
             <CheckCircle className="w-3.5 h-3.5 text-muted-foreground" />
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
-            <Database className={cn("w-3.5 h-3.5", offlineCount > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground")} />
+          <div className="flex items-center gap-2 p-2 rounded-md bg-secondary/30">
+            <Database className={cn("w-3.5 h-3.5", offlineCount > 0 ? "text-red-600" : "text-muted-foreground")} />
             <span className="flex-1 text-muted-foreground truncate">Offline Queue</span>
-            <span className={cn("font-semibold", offlineCount > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>{offlineCount}</span>
+            <span className={cn("font-semibold", offlineCount > 0 ? "text-red-600" : "text-muted-foreground")}>{offlineCount}</span>
           </div>
         </div>
       </CardContent>
