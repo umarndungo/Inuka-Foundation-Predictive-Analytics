@@ -16,17 +16,17 @@ import { formatRelativeTime } from "@/lib/utils";
 import { getTelemetryStreamUrl } from "@/lib/api/telemetry";
 
 const EVENT_TYPE_CONFIG = {
-  attendance: { icon: CheckCircle, color: "text-zinc-600 dark:text-zinc-400 bg-zinc-500/10", label: "Attendance" },
-  engagement: { icon: Zap, color: "text-zinc-700 dark:text-zinc-300 bg-zinc-500/10", label: "Engagement" },
-  location: { icon: MapPin, color: "text-zinc-600 dark:text-zinc-400 bg-zinc-500/10", label: "Location" },
-  device_health: { icon: Cpu, color: "text-red-600 dark:text-red-400 bg-red-500/10", label: "Device Health" },
-  assignment: { icon: HardDrive, color: "text-zinc-600 dark:text-zinc-400 bg-zinc-500/10", label: "Assignment" },
+  attendance: { icon: CheckCircle, color: "text-zinc-600 bg-zinc-100", label: "Attendance" },
+  engagement: { icon: Zap, color: "text-zinc-700 bg-zinc-100", label: "Engagement" },
+  location: { icon: MapPin, color: "text-zinc-600 bg-zinc-100", label: "Location" },
+  device_health: { icon: Cpu, color: "text-red-600 bg-red-50", label: "Device Health" },
+  assignment: { icon: HardDrive, color: "text-zinc-600 bg-zinc-100", label: "Assignment" },
 };
 
 const SEVERITY_CONFIG = {
-  info: { color: "text-muted-foreground", bg: "bg-muted/50" },
-  warning: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
-  error: { color: "text-red-700 dark:text-red-400 font-bold", bg: "bg-red-600/15" },
+  info: { color: "text-muted-foreground", bg: "bg-secondary/50" },
+  warning: { color: "text-amber-600", bg: "bg-amber-50" },
+  error: { color: "text-red-600 font-semibold", bg: "bg-red-50" },
 };
 
 interface TelemetryStreamProps {
@@ -226,16 +226,13 @@ function CompactTelemetryItem({ event }: { event: TelemetryEvent }) {
   const Icon = typeConfig.icon;
 
   return (
-    <div className="p-3 hover:bg-muted/50 transition-colors border-l-2" style={{ borderColor: `var(--${event.severity === "error" ? "destructive" : event.severity === "warning" ? "warning" : "muted"})` }}>
+    <div className="px-3 py-2.5 hover:bg-secondary/30 transition-colors border-l-2" style={{ borderColor: event.severity === "error" ? "var(--destructive)" : event.severity === "warning" ? "var(--warning)" : "transparent" }}>
       <div className="flex items-center gap-2">
-        <Icon className={cn("w-4 h-4 flex-shrink-0", typeConfig.color)} />
+        <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", typeConfig.color)} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{event.beneficiaryCode} • {event.deviceId}</p>
-          <p className="text-xs text-muted-foreground">{event.region} • {formatRelativeTime(event.timestamp)}</p>
+          <p className="text-xs font-medium truncate text-foreground">{event.beneficiaryCode} <span className="text-muted-foreground">· {event.region}</span></p>
+          <p className="text-[11px] text-muted-foreground font-mono">{formatRelativeTime(event.timestamp)}</p>
         </div>
-        <Badge variant="outline" className={cn("text-xs", severityConfig.bg, severityConfig.color)}>
-          {event.severity}
-        </Badge>
       </div>
     </div>
   );
@@ -247,28 +244,29 @@ function TelemetryItem({ event }: { event: TelemetryEvent }) {
   const Icon = typeConfig.icon;
 
   return (
-    <div className="p-4 hover:bg-muted/50 transition-colors border-l-2" style={{ borderColor: `var(--${event.severity === "error" ? "destructive" : event.severity === "warning" ? "warning" : "muted"})` }}>
+    <div className="px-4 py-3 hover:bg-secondary/30 transition-colors border-l-2" style={{ borderColor: event.severity === "error" ? "var(--destructive)" : event.severity === "warning" ? "var(--warning)" : "transparent" }}>
       <div className="flex items-start gap-3">
-        <div className={cn("flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center", typeConfig.color)}>
-          <Icon className="w-5 h-5" />
+        <div className={cn("flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center mt-0.5", typeConfig.color)}>
+          <Icon className="w-3.5 h-3.5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className={cn(typeConfig.color, "gap-1")}>
-                <Icon className="w-3 h-3" />
-                {typeConfig.label}
-              </Badge>
-              <Badge variant="outline" className={cn(severityConfig.bg, severityConfig.color, "gap-1")}>
-                {event.severity.toUpperCase()}
-              </Badge>
-            </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{formatRelativeTime(event.timestamp)}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+              {typeConfig.label}
+            </span>
+            {event.severity !== "info" && (
+              <span className={cn("text-[10px] font-mono font-semibold uppercase", severityConfig.color)}>
+                {event.severity}
+              </span>
+            )}
           </div>
-          <p className="mt-1 text-sm font-medium">{event.beneficiaryCode} • {event.deviceId} • {event.region}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <span>Value: <code className="font-mono">{typeof event.value === "number" ? event.value.toFixed(2) : event.value}</code></span>
-            {event.metadata && <span>Metadata: <code className="font-mono">{JSON.stringify(event.metadata).slice(0, 50)}...</code></span>}
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {event.beneficiaryCode} <span className="text-muted-foreground font-mono text-xs">· {event.deviceId}</span>
+          </p>
+          <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
+            <span>{event.region}</span>
+            <span>{formatRelativeTime(event.timestamp)}</span>
+            <span className="text-foreground font-medium">{typeof event.value === "number" ? event.value.toFixed(2) : event.value}</span>
           </div>
         </div>
       </div>

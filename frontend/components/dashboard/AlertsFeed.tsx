@@ -15,10 +15,10 @@ import type { Alert } from "@/types";
 import { formatRelativeTime, formatDateTime } from "@/lib/utils";
 
 const SEVERITY_CONFIG = {
-  critical: { icon: AlertTriangle, color: "bg-red-600/15 text-red-700 dark:text-red-400 border-red-600/30", label: "Critical" },
-  high: { icon: AlertCircle, color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", label: "High" },
-  medium: { icon: Info, color: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700", label: "Medium" },
-  low: { icon: Database, color: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800", label: "Low" },
+  critical: { icon: AlertTriangle, color: "bg-red-600/10 text-red-600 border-red-200", label: "Critical" },
+  high: { icon: AlertCircle, color: "bg-red-500/10 text-red-600 border-red-200", label: "High" },
+  medium: { icon: Info, color: "bg-zinc-100 text-zinc-600 border-zinc-200", label: "Medium" },
+  low: { icon: Database, color: "bg-zinc-50 text-zinc-500 border-zinc-200", label: "Low" },
 };
 
 const TYPE_ICONS = {
@@ -147,23 +147,24 @@ function CompactAlertItem({ alert, onAcknowledge, onResolve }: { alert: Alert; o
   const Icon = severity.icon;
 
   return (
-    <div className="p-3 hover:bg-muted/50 transition-colors">
+    <div className="px-3 py-2.5 hover:bg-secondary/30 transition-colors">
       <div className="flex items-start gap-2">
-        <Icon className={cn("w-4 h-4 mt-0.5 flex-shrink-0", severity.color.replace("bg-", "text-").replace("border-", ""))} />
+        <Icon className={cn("w-3.5 h-3.5 mt-0.5 flex-shrink-0", severity.color.replace(/bg-\S+/, "").replace(/border-\S+/, "").trim())} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{alert.description}</p>
-          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">{formatRelativeTime(alert.timestamp)}</span>
+          <p className="text-xs font-medium truncate text-foreground">{alert.description}</p>
+          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground font-mono">
+            <span>{formatRelativeTime(alert.timestamp)}</span>
+            <span>·</span>
             <span>{alert.location}</span>
           </div>
         </div>
         {alert.status === "new" && (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onAcknowledge?.(alert.id)} aria-label="Acknowledge">
-              <Check className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onAcknowledge?.(alert.id)} aria-label="Acknowledge">
+              <Check className="w-3 h-3" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onResolve?.(alert.id)} aria-label="Resolve">
-              <X className="w-3.5 h-3.5" />
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onResolve?.(alert.id)} aria-label="Resolve">
+              <X className="w-3 h-3" />
             </Button>
           </div>
         )}
@@ -175,61 +176,45 @@ function CompactAlertItem({ alert, onAcknowledge, onResolve }: { alert: Alert; o
 function AlertItem({ alert, onAcknowledge, onResolve }: { alert: Alert; onAcknowledge?: (id: string) => void; onResolve?: (id: string) => void }) {
   const severity = SEVERITY_CONFIG[alert.severity];
   const Icon = severity.icon;
-  const TypeIcon = TYPE_ICONS[alert.type] || AlertTriangle;
 
   return (
-    <div className="p-4 hover:bg-muted/50 transition-colors">
+    <div className="px-4 py-3 hover:bg-secondary/30 transition-colors border-l-2 border-l-transparent hover:border-l-primary/40">
       <div className="flex items-start gap-3">
-        <div className={cn("flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center", severity.color)}>
-          <Icon className="w-5 h-5" />
+        <div className={cn("flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center mt-0.5", severity.color)}>
+          <Icon className="w-3.5 h-3.5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className={cn(severity.color, "gap-1")}>
-                <TypeIcon className="w-3 h-3" />
-                {alert.type.replace("_", " ")}
-              </Badge>
-              <Badge variant="outline" className={cn(severity.color, "gap-1")}>
-                {severity.label}
-              </Badge>
-              <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted/50 gap-1">
-                {alert.status.charAt(0).toUpperCase() + alert.status.slice(1)}
-              </Badge>
-            </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(alert.timestamp)}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+              {alert.type.replace("_", " ")}
+            </span>
+            <StatusBadge status={alert.severity === "critical" ? "high" : alert.severity} label={severity.label} size="sm" />
           </div>
-          <p className="mt-1 text-sm font-medium">{alert.description}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <p className="mt-1 text-sm font-medium text-foreground leading-snug">{alert.description}</p>
+          <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{alert.location}</span>
-            {alert.beneficiaryCode && <span className="flex items-center gap-1"><User className="w-3 h-3" />{alert.beneficiaryCode}</span>}
-            {alert.deviceId && <span className="flex items-center gap-1"><Database className="w-3 h-3" />{alert.deviceId}</span>}
+            {alert.beneficiaryCode && <span>{alert.beneficiaryCode}</span>}
+            <span>{formatRelativeTime(alert.timestamp)}</span>
           </div>
-          {alert.metadata && (
-            <details className="mt-2">
-              <summary className="text-xs text-muted-foreground cursor-pointer">Show details</summary>
-              <pre className="mt-1 text-[11px] bg-muted p-2 rounded overflow-x-auto">{JSON.stringify(alert.metadata, null, 2)}</pre>
-            </details>
-          )}
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 flex-shrink-0">
           {alert.status === "new" && (
             <>
-              <Button variant="default" size="sm" className="w-full" onClick={() => onAcknowledge?.(alert.id)}>
-                <Check className="w-3.5 h-3.5 mr-1" /> Acknowledge
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] font-mono px-2" onClick={() => onAcknowledge?.(alert.id)}>
+                Ack
               </Button>
-              <Button variant="outline" size="sm" className="w-full" onClick={() => onResolve?.(alert.id)}>
-                <X className="w-3.5 h-3.5 mr-1" /> Resolve
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] font-mono px-2 text-muted-foreground" onClick={() => onResolve?.(alert.id)}>
+                Resolve
               </Button>
             </>
           )}
           {alert.status === "acknowledged" && (
-            <Button variant="default" size="sm" className="w-full" onClick={() => onResolve?.(alert.id)}>
-              <Check className="w-3.5 h-3.5 mr-1" /> Mark Resolved
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] font-mono px-2" onClick={() => onResolve?.(alert.id)}>
+              Resolve
             </Button>
           )}
           {alert.status === "resolved" && (
-            <Badge variant="secondary" className="w-full justify-center">Resolved</Badge>
+            <span className="text-[10px] font-mono text-muted-foreground px-2">Done</span>
           )}
         </div>
       </div>
