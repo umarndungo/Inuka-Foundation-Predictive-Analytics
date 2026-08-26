@@ -32,7 +32,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 4,
     title: "How it works",
     description:
-      "Live data streams in. Every beneficiary gets a real-time risk score. High-risk cases trigger an automatic SMS to the nearest field worker — before a supervisor has to go looking for trouble.",
+      "Live data streams in. Every beneficiary gets a real-time risk score. High-risk cases trigger an automatic EMAIL to the nearest field worker — before a supervisor has to go looking for trouble.",
     type: "info",
   },
 ];

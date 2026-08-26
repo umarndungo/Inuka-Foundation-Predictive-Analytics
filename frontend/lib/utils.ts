@@ -94,3 +94,16 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
+
+export function maskPhone(phone?: string): string {
+  if (!phone || phone.length < 6) return phone ?? "—";
+  return phone.slice(0, 3) + "****" + phone.slice(-3);
+}
+
+export function riskTierColor(tier: string): "high" | "medium" | "low" {
+  switch (tier.toUpperCase()) {
+    case "HIGH": return "high";
+    case "MEDIUM": return "medium";
+    default: return "low";
+  }
+}

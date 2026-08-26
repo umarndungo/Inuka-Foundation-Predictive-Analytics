@@ -38,17 +38,38 @@ interface FieldMapProps {
   mapRegions: MapRegion[];
   beneficiaries: Beneficiary[];
   fieldWorkers: FieldWorker[];
+  compact?: boolean;
+  selectedBeneficiaryId?: string | null;
+  onBeneficiarySelect?: (b: Beneficiary | null) => void;
+  onRegionSelect?: (r: MapRegion | null) => void;
 }
 
-export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }: FieldMapProps) {
+export function FieldMap({
+  className,
+  mapRegions,
+  beneficiaries,
+  fieldWorkers,
+  compact = false,
+  selectedBeneficiaryId,
+  onBeneficiarySelect,
+  onRegionSelect,
+}: FieldMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<MapRegion | null>(null);
-  const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
+  const [internalRegion, setInternalRegion] = useState<MapRegion | null>(null);
+  const [internalBeneficiary, setInternalBeneficiary] = useState<Beneficiary | null>(null);
   const [showBeneficiaries, setShowBeneficiaries] = useState(true);
   const [showFieldWorkers, setShowFieldWorkers] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+
+  const selectedRegion = onRegionSelect !== undefined ? null : internalRegion;
+  const selectedBeneficiary = onBeneficiarySelect !== undefined
+    ? beneficiaries.find((b) => b.id === selectedBeneficiaryId) ?? null
+    : internalBeneficiary;
+
+  const selectRegion = onRegionSelect ?? setInternalRegion;
+  const selectBeneficiary = onBeneficiarySelect ?? setInternalBeneficiary;
 
   const initializeMap = useCallback(() => {
     if (mapRef.current || !mapContainerRef.current) return;
@@ -92,8 +113,9 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
           const marker = L.marker(region.coordinates as L.LatLngExpression, { icon })
             .addTo(map)
             .on("click", () => {
-              setSelectedRegion(region);
-              setSelectedBeneficiary(null);
+              selectRegion(region);
+              selectBeneficiary(null);
+              onBeneficiarySelect?.(null);
             });
         });
 
@@ -110,7 +132,7 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
       setMapError("Map initialization failed in the browser.");
       setMapLoaded(false);
     }
-  }, [beneficiaries, mapRegions, showBeneficiaries, showFieldWorkers]);
+  }, [beneficiaries, mapRegions, showBeneficiaries, showFieldWorkers, selectRegion, selectBeneficiary, onBeneficiarySelect]);
 
   const addBeneficiaryMarkers = (map: L.Map) => {
     const highRiskBeneficiaries = beneficiaries.filter(
@@ -130,8 +152,9 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
       L.marker([b.coordinates.lat, b.coordinates.lng], { icon })
         .addTo(map)
         .on("click", () => {
-          setSelectedBeneficiary(b);
-          setSelectedRegion(null);
+          selectBeneficiary(b);
+          selectRegion(null);
+          onBeneficiarySelect?.(b);
         });
     });
   };
@@ -171,6 +194,60 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
   const flyToRegion = (region: MapRegion) => {
     mapRef.current?.flyTo(region.coordinates as L.LatLngExpression, 9);
   };
+
+  const flyToBeneficiary = (b: Beneficiary) => {
+    mapRef.current?.flyTo([b.coordinates.lat, b.coordinates.lng], 12);
+  };
+
+  if (compact) {
+    return (
+      <div className={cn("relative h-full min-h-[380px] bg-card overflow-hidden", className)}>
+        <div ref={mapContainerRef} className="w-full h-full min-h-[380px]" />
+
+        {!mapLoaded && !mapError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground text-xs">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="font-medium">Loading Map...</p>
+            </div>
+          </div>
+        )}
+
+        {mapError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-10 p-6">
+            <div className="max-w-md text-center space-y-3">
+              <p className="text-sm font-semibold text-foreground">Map unavailable</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{mapError}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="absolute top-3 left-3 z-10">
+          <div className="bg-card/90 backdrop-blur-sm rounded-md border border-border p-2 shadow-xs text-[11px] space-y-1">
+            <span className="font-mono font-medium text-muted-foreground block text-[10px] uppercase">Legend</span>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span>High</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-zinc-500" />
+              <span>Medium</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-zinc-300" />
+              <span>Low</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute bottom-3 right-3 z-10">
+          <Button variant="outline" size="sm" onClick={flyToCenter} className="h-7 gap-1 text-xs bg-card/90 backdrop-blur-sm">
+            <Compass className="w-3.5 h-3.5" /> Reset
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Card className={cn("h-full flex flex-col border border-border shadow-xs bg-card overflow-hidden", className)}>
@@ -262,7 +339,7 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                    onClick={() => { setSelectedRegion(null); setSelectedBeneficiary(null); }}
+                    onClick={() => { selectRegion(null); selectBeneficiary(null); onBeneficiarySelect?.(null); }}
                   >
                     <X className="w-3.5 h-3.5" />
                   </Button>
@@ -300,7 +377,7 @@ export function FieldMap({ className, mapRegions, beneficiaries, fieldWorkers }:
               <span>Medium Risk</span>
             </div>
             <div className="flex items-center gap-1.5 font-mono">
-              <span className="w-2 h-2 rounded-full bg-zinc-700 dark:bg-zinc-400" />
+              <span className="w-2 h-2 rounded-full bg-zinc-300" />
               <span>Low Risk</span>
             </div>
           </div>
